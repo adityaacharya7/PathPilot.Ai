@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
-import { Layout, Briefcase, MessageSquare, Map, FileText, Settings, BarChart, Sun, Moon, LogOut, User as UserIcon } from 'lucide-react';
+import { Layout, Briefcase, MessageSquare, Map, FileText, Settings, BarChart, Sun, Moon, LogOut, User as UserIcon, Sparkles } from 'lucide-react';
 import { UserProfile } from './types';
 
 // Pages
@@ -53,57 +53,73 @@ const Sidebar = () => {
   if (location.pathname === '/' || location.pathname === '/login' || location.pathname === '/profile-setup') return null;
 
   return (
-    <div className="w-64 bg-white dark:bg-slate-900 border-r dark:border-slate-800 h-screen sticky top-0 flex flex-col transition-colors">
-      <div className="p-6 border-b dark:border-slate-800 flex justify-between items-center">
-        <Link to="/" className="text-2xl font-bold text-brand-600 dark:text-brand-400 flex items-center gap-2">
-          <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center text-white text-sm">PP</div>
+    <div className="w-72 bg-white dark:bg-slate-900 border-r dark:border-slate-800 h-screen sticky top-0 flex flex-col transition-all duration-300">
+      <div className="p-8 border-b dark:border-slate-800">
+        <Link to="/dashboard" className="text-2xl font-black text-brand-600 dark:text-brand-400 flex items-center gap-3 tracking-tighter">
+          <div className="w-10 h-10 bg-brand-600 rounded-2xl flex items-center justify-center text-white text-base shadow-lg shadow-brand-500/20">PP</div>
           PathPilot
         </Link>
       </div>
-      <nav className="flex-1 p-4 space-y-1">
+      
+      <nav className="flex-1 p-6 space-y-2 overflow-y-auto">
+        <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 ml-4">Main Menu</p>
         {navItems.map((item) => (
           <Link
             key={item.path}
             to={item.path}
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+            className={`flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-200 group ${
               isActive(item.path)
-                ? 'bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-400 font-semibold shadow-sm'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-brand-600 dark:hover:text-brand-400'
+                ? 'bg-brand-600 text-white shadow-xl shadow-brand-500/20 font-bold scale-[1.02]'
+                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-brand-600 dark:hover:text-brand-400'
             }`}
           >
-            <item.icon size={20} />
-            {item.label}
+            <item.icon size={22} className={isActive(item.path) ? 'text-white' : 'group-hover:scale-110 transition-transform'} />
+            <span className="text-base tracking-tight">{item.label}</span>
           </Link>
         ))}
       </nav>
-      <div className="p-4 border-t dark:border-slate-800 space-y-4">
-        <button 
-          onClick={toggle}
-          className="flex items-center gap-3 w-full px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-        >
-          {isDark ? <Sun size={20} /> : <Moon size={20} />}
-          {isDark ? 'Light Mode' : 'Dark Mode'}
-        </button>
-        <div className="flex items-center justify-between gap-3 px-4 py-3 bg-gray-50 dark:bg-slate-800/50 rounded-xl border dark:border-slate-700">
+
+      <div className="p-6 border-t dark:border-slate-800 space-y-6 bg-gray-50/50 dark:bg-slate-900/50">
+        <div className="flex items-center gap-3">
+           <button 
+             onClick={toggle}
+             className="flex-1 flex items-center justify-center gap-3 py-3 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-2xl shadow-sm text-gray-600 dark:text-gray-400 hover:bg-brand-50 dark:hover:bg-brand-900/10 hover:text-brand-600 transition-all font-bold text-xs uppercase tracking-widest"
+           >
+             {isDark ? <Sun size={16} /> : <Moon size={16} />}
+             {isDark ? 'Light' : 'Dark'}
+           </button>
+        </div>
+
+        <div className="p-4 bg-white dark:bg-slate-800 rounded-3xl border dark:border-slate-700 shadow-sm space-y-4">
           <div className="flex items-center gap-3 overflow-hidden">
-             <div className="w-8 h-8 rounded-full bg-brand-100 dark:bg-brand-900 flex items-center justify-center text-brand-600 dark:text-brand-300">
-               {user?.avatar ? <img src={user.avatar} className="rounded-full" /> : <UserIcon size={16} />}
+             <div className="w-10 h-10 rounded-2xl bg-brand-100 dark:bg-brand-900 flex items-center justify-center text-brand-600 dark:text-brand-300 flex-shrink-0 shadow-inner">
+               {user?.avatar ? (
+                  <img src={user.avatar} className="w-full h-full object-cover rounded-2xl" referrerPolicy="no-referrer" />
+               ) : (
+                  <UserIcon size={20} />
+               )}
              </div>
-             <div className="truncate">
-                <p className="text-xs font-bold truncate dark:text-white">{user?.name || 'Guest'}</p>
-                <p className="text-[10px] text-gray-500 truncate">{user?.targetRole || 'Explorer'}</p>
+             <div className="truncate flex-1">
+                <p className="text-sm font-black truncate dark:text-white tracking-tight">{user?.name || 'Guest'}</p>
+                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{user?.targetRole || 'Explorer'}</p>
              </div>
+             <button onClick={() => { logout(); navigate('/'); }} className="p-2 text-gray-300 hover:text-red-500 transition-colors">
+                <LogOut size={18} />
+             </button>
           </div>
-          <button onClick={() => { logout(); navigate('/'); }} className="text-gray-400 hover:text-red-500 transition-colors">
-            <LogOut size={16} />
-          </button>
+          
+          {user?.targetRole && (
+             <div className="flex items-center gap-2 px-3 py-1 bg-brand-50 dark:bg-brand-900/20 rounded-lg">
+                <Sparkles size={12} className="text-brand-600" />
+                <span className="text-[10px] font-black text-brand-700 dark:text-brand-300 uppercase tracking-tighter">AI Optimized</span>
+             </div>
+          )}
         </div>
       </div>
     </div>
   );
 };
 
-// Fixed: children is made optional to resolve TypeScript "children is missing" error when wrapping Route elements
 const ProtectedRoute = ({ children }: { children?: React.ReactNode }) => {
   const { user } = useUser();
   if (!user) return <Navigate to="/login" replace />;
@@ -131,6 +147,7 @@ const App: React.FC = () => {
   const logout = () => {
     setUser(null);
     localStorage.removeItem('user');
+    localStorage.removeItem('chat_history'); // Clear chat on logout for privacy
   };
 
   const updateProfile = (u: UserProfile) => {
@@ -144,7 +161,7 @@ const App: React.FC = () => {
         <Router>
           <div className="flex min-h-screen transition-colors">
             <Sidebar />
-            <main className="flex-1 bg-gray-50 dark:bg-slate-950 overflow-auto">
+            <main className="flex-1 bg-gray-50 dark:bg-slate-950 overflow-auto scroll-smooth">
               <Routes>
                 <Route path="/" element={<Landing />} />
                 <Route path="/login" element={<Login />} />
