@@ -38,11 +38,16 @@ export interface Internship {
   id: string;
   company: string;
   role: string;
+  type: 'Internship' | 'Co-op' | 'Full-time' | 'Remote';
+  location: string;
+  stipend: string;
   skills: string[];
-  difficulty: 'Easy' | 'Medium' | 'Hard';
-  eligibleYear: number;
+  difficulty: 'Easy' | 'Medium' | 'Hard' | 'Stretch';
+  eligibleYear: number[]; // Changed to array for multiple batches
+  postedDate: string;
+  deadline: string;
   isVerified: boolean;
-  matchScore: number;
+  verificationSource?: string; // e.g. "Placement Cell"
 }
 
 export interface PrepPlan {

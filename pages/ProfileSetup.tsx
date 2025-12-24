@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../App';
@@ -11,7 +10,7 @@ const ProfileSetup: React.FC = () => {
   const [details, setDetails] = useState({
     targetRole: '',
     graduationYear: '2025',
-    currentLevel: 'Beginner' as const,
+    currentLevel: 'Beginner' as 'Beginner' | 'Intermediate' | 'Advanced',
     skills: [] as string[]
   });
 

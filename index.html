@@ -5,11 +5,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PathPilot AI - From Student to Industry-Ready</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
     <style>
-        body { font-family: 'Inter', sans-serif; transition: background-color 0.3s, color 0.3s; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; transition: background-color 0.3s, color 0.3s; }
         .dark { color-scheme: dark; }
         
         /* Custom scrollbar for better dark mode aesthetics */
@@ -23,6 +25,9 @@
         darkMode: 'class',
         theme: {
           extend: {
+            fontFamily: {
+              sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            },
             colors: {
               brand: {
                 50: '#f0f4ff',
@@ -36,9 +41,53 @@
                 800: '#0003cc',
                 900: '#000299',
               }
-            }
+            },
+            typography: (theme) => ({
+              DEFAULT: {
+                css: {
+                  color: theme('colors.gray.700'),
+                  fontFamily: '"Plus Jakarta Sans", sans-serif',
+                  strong: { color: theme('colors.gray.900'), fontWeight: '800' },
+                  a: { color: theme('colors.brand.600'), '&:hover': { color: theme('colors.brand.700') } },
+                },
+              },
+              dark: {
+                css: {
+                  color: theme('colors.gray.300'),
+                  strong: { color: theme('colors.white'), fontWeight: '800' },
+                  a: { color: theme('colors.brand.400'), '&:hover': { color: theme('colors.brand.300') } },
+                  h1: { color: theme('colors.white') },
+                  h2: { color: theme('colors.white') },
+                  h3: { color: theme('colors.white') },
+                  h4: { color: theme('colors.white') },
+                },
+              },
+            }),
           }
-        }
+        },
+        plugins: [
+          function({ addUtilities }) {
+            addUtilities({
+              '.prose-brand': {
+                '--tw-prose-body': '#374151',
+                '--tw-prose-headings': '#111827',
+                '--tw-prose-links': '#2563eb',
+                '--tw-prose-bold': '#111827',
+                '--tw-prose-counters': '#6b7280',
+                '--tw-prose-bullets': '#d1d5db',
+                '--tw-prose-hr': '#e5e7eb',
+                '--tw-prose-quotes': '#111827',
+                '--tw-prose-quote-borders': '#e5e7eb',
+                '--tw-prose-captions': '#6b7280',
+                '--tw-prose-code': '#111827',
+                '--tw-prose-pre-code': '#e5e7eb',
+                '--tw-prose-pre-bg': '#1f2937',
+                '--tw-prose-th-borders': '#d1d5db',
+                '--tw-prose-td-borders': '#e5e7eb',
+              }
+            })
+          }
+        ]
       }
     </script>
 <script type="importmap">
@@ -50,7 +99,8 @@
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
     "recharts": "https://esm.sh/recharts@^3.6.0",
-    "react-router-dom": "https://esm.sh/react-router-dom@^7.11.0"
+    "react-router-dom": "https://esm.sh/react-router-dom@^7.11.0",
+    "react-markdown": "https://esm.sh/react-markdown@9.0.1?bundle"
   }
 }
 </script>

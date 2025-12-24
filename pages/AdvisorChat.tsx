@@ -1,6 +1,6 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Loader2, Sparkles, Trash2 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import { getCareerAdvice } from '../services/geminiService';
 import { ChatMessage } from '../types';
 import { useUser } from '../App';
@@ -76,13 +76,13 @@ const AdvisorChat: React.FC = () => {
               }`}>
                 {msg.role === 'user' ? <User size={20} /> : <Sparkles size={20} />}
               </div>
-              <div className={`p-6 rounded-3xl text-base leading-relaxed shadow-sm ${
+              <div className={`p-6 rounded-3xl text-base leading-relaxed shadow-sm overflow-hidden ${
                 msg.role === 'user' 
                   ? 'bg-brand-600 text-white rounded-tr-none' 
                   : 'bg-gray-50 dark:bg-slate-900 text-gray-800 dark:text-gray-200 rounded-tl-none border dark:border-slate-800'
               }`}>
-                <div className="prose dark:prose-invert prose-brand max-w-none">
-                    {msg.content}
+                <div className={`prose dark:prose-invert max-w-none ${msg.role === 'user' ? 'prose-p:text-white prose-headings:text-white prose-strong:text-white' : ''}`}>
+                    <ReactMarkdown>{msg.content}</ReactMarkdown>
                 </div>
               </div>
             </div>

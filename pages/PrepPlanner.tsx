@@ -1,6 +1,6 @@
-
 import React, { useState } from 'react';
 import { Calendar, AlertTriangle, Target, Loader2, Sparkles } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import { generatePrepPlan } from '../services/geminiService';
 import { PrepPlan } from '../types';
 
@@ -90,8 +90,8 @@ const PrepPlanner: React.FC = () => {
               <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
                 <Calendar className="text-indigo-600" /> Daily Plan
               </h2>
-              <div className="prose prose-indigo max-w-none whitespace-pre-line text-gray-700 leading-relaxed">
-                {plan.dailyPlan}
+              <div className="prose prose-indigo max-w-none text-gray-700 leading-relaxed">
+                <ReactMarkdown>{plan.dailyPlan}</ReactMarkdown>
               </div>
             </section>
           </div>
