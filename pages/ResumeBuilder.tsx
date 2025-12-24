@@ -2,7 +2,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   FileText, Sparkles, Loader2, UploadCloud, X, File as FileIcon, Target, 
-  Briefcase, Zap, ShieldAlert, AlertCircle, TrendingUp, Download, MessageSquare, Send, Bot
+  Briefcase, Zap, ShieldAlert, AlertCircle, TrendingUp, Download, MessageSquare, Send, Bot,
+  AlertTriangle, CheckCircle2, Clock
 } from 'lucide-react';
 import { analyzeResumeATS, chatWithResume } from '../services/geminiService';
 import { useUser } from '../App';
@@ -118,7 +119,7 @@ const ResumeBuilder: React.FC = () => {
       // Initialize Chat
       setChatMessages([{
         role: 'assistant',
-        content: `I've analyzed your resume! Your ATS score is **${result.ats_score.total}%**. I found some gaps in ${result.keyword_analysis.missing_critical.slice(0, 2).join(', ') || 'keywords'}. Ask me how to fix them!`
+        content: `I've analyzed your resume! Your ATS score is **${result.ats_score.total}%**. I found some gaps in ${result.keyword_analysis.critical.slice(0, 2).map(k => k.keyword).join(', ') || 'keywords'}. Ask me how to fix them!`
       }]);
     } catch (err) {
       console.error(err);
@@ -185,7 +186,7 @@ const ResumeBuilder: React.FC = () => {
 
       <div className="grid lg:grid-cols-12 gap-8 relative">
         
-        {/* LEFT: INPUT & PREVIEW */}
+        {/* LEFT: INPUT & PREVIEW & FIXES */}
         <div className="lg:col-span-6 space-y-6">
           
           {/* Controls */}
@@ -210,7 +211,7 @@ const ResumeBuilder: React.FC = () => {
           </div>
 
           {/* Upload Area */}
-          <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border dark:border-slate-800 shadow-sm overflow-hidden min-h-[500px] flex flex-col">
+          <div className={`bg-white dark:bg-slate-900 rounded-[2.5rem] border dark:border-slate-800 shadow-sm overflow-hidden flex flex-col transition-all duration-500 ${analysis ? 'min-h-[300px]' : 'min-h-[500px]'}`}>
               {activeTab === 'upload' && !file ? (
                  <div 
                    onClick={() => fileInputRef.current?.click()}
@@ -239,7 +240,7 @@ const ResumeBuilder: React.FC = () => {
                           <X size={20} />
                        </button>
                     </div>
-                    {/* Visual Preview Placeholder - In a real app, use pdf.js */}
+                    {/* Visual Preview Placeholder */}
                     <div className="flex-1 bg-gray-100 dark:bg-slate-950 flex items-center justify-center p-10 relative overflow-hidden">
                        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle, #6366f1 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
                        <div className="bg-white dark:bg-slate-900 w-full max-w-md h-full shadow-2xl rounded-xl p-8 space-y-4 opacity-50 blur-[1px] transform scale-95 origin-top">
@@ -277,6 +278,55 @@ const ResumeBuilder: React.FC = () => {
                 </div>
               )}
           </div>
+
+          {/* MOVED: Improvements List (Diff View) - Now in Left Column */}
+          {analysis && (
+            <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border dark:border-slate-800 shadow-sm animate-in slide-in-from-bottom-8 duration-700 delay-100">
+                <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-xl font-black dark:text-white flex items-center gap-2">
+                        <Zap size={20} className="text-brand-600" /> High-Impact Fixes
+                    </h3>
+                </div>
+                <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                    {analysis.bullet_improvements.map((item, idx) => (
+                        <div key={idx} className="space-y-2">
+                            <div className="flex justify-between items-center">
+                                <div className="flex items-center gap-2">
+                                    <span className="w-5 h-5 rounded-full bg-gray-100 dark:bg-slate-800 text-xs font-bold flex items-center justify-center">{idx + 1}</span>
+                                    <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${
+                                        item.status === 'Weak' ? 'bg-red-100 text-red-600' : 'bg-yellow-100 text-yellow-600'
+                                    }`}>{item.status}</span>
+                                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{item.rewrite_mode} Rewrite</span>
+                                </div>
+                            </div>
+                            {item.issue_note && (
+                                <p className="text-xs text-red-500 italic pl-7">{item.issue_note}</p>
+                            )}
+                            <div className="grid grid-cols-1 gap-4">
+                                <div className="p-4 bg-gray-50 dark:bg-slate-900/50 border border-gray-100 dark:border-slate-800 rounded-2xl">
+                                    <p className="text-[10px] font-black text-gray-400 uppercase mb-2">Original</p>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400 line-through opacity-70 leading-relaxed">{item.original}</p>
+                                </div>
+                                <div className="p-4 bg-brand-50 dark:bg-brand-900/10 border border-brand-100 dark:border-brand-900/20 rounded-2xl relative">
+                                    <div className="absolute top-4 right-4 text-brand-500">
+                                        <Sparkles size={14} />
+                                    </div>
+                                    <p className="text-[10px] font-black text-brand-600 uppercase mb-2">Optimized</p>
+                                    <p className="text-sm font-bold text-brand-900 dark:text-brand-300 leading-relaxed">{item.improved}</p>
+                                    <div className="mt-3 flex flex-wrap gap-2">
+                                        {item.why_it_works.map((reason, rIdx) => (
+                                            <span key={rIdx} className="text-[9px] font-bold text-brand-500 bg-white dark:bg-slate-900 px-2 py-1 rounded border border-brand-100 dark:border-brand-900/30 flex items-center gap-1">
+                                                <CheckCircle2 size={8} /> {reason}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+          )}
         </div>
 
         {/* RIGHT: ANALYSIS & CHAT */}
@@ -301,16 +351,25 @@ const ResumeBuilder: React.FC = () => {
                     <div className="grid md:grid-cols-2 gap-6">
                         {/* Overall Score */}
                         <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border dark:border-slate-800 shadow-sm relative overflow-hidden">
-                            <h3 className="font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest text-xs mb-4">Overall ATS Score</h3>
-                            <div className="h-48 w-full relative">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <RadialBarChart innerRadius="80%" outerRadius="100%" barSize={20} data={radialData} startAngle={90} endAngle={-270}>
-                                        <RadialBar background clockWise dataKey="value" cornerRadius={10} />
-                                    </RadialBarChart>
-                                </ResponsiveContainer>
-                                <div className="absolute inset-0 flex items-center justify-center flex-col">
-                                    <span className="text-5xl font-black dark:text-white">{analysis.ats_score.total}</span>
-                                    <span className="text-xs font-bold text-gray-400">/ 100</span>
+                            <h3 className="font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest text-xs mb-4">ATS Score & Projection</h3>
+                            <div className="flex items-center gap-6">
+                                <div className="h-32 w-32 relative flex-shrink-0">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <RadialBarChart innerRadius="80%" outerRadius="100%" barSize={15} data={radialData} startAngle={90} endAngle={-270}>
+                                            <RadialBar background clockWise dataKey="value" cornerRadius={10} />
+                                        </RadialBarChart>
+                                    </ResponsiveContainer>
+                                    <div className="absolute inset-0 flex items-center justify-center flex-col">
+                                        <span className="text-3xl font-black dark:text-white">{analysis.ats_score.total}</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Potential</p>
+                                    <p className="text-2xl font-black text-green-500">{analysis.ats_score.projected_score}</p>
+                                    <div className="mt-2 flex items-center gap-1.5 px-2 py-1 bg-gray-100 dark:bg-slate-800 rounded-lg w-fit">
+                                        <ShieldAlert size={10} className="text-gray-500" />
+                                        <span className="text-[10px] font-bold text-gray-500 uppercase">{analysis.ats_score.confidence} Confidence</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -318,9 +377,9 @@ const ResumeBuilder: React.FC = () => {
                         {/* Breakdown Radar */}
                         <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border dark:border-slate-800 shadow-sm">
                              <h3 className="font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest text-xs mb-2">Metrics Breakdown</h3>
-                             <div className="h-48 w-full text-xs">
+                             <div className="h-40 w-full text-xs">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
+                                    <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
                                         <PolarGrid stroke="#e5e7eb" />
                                         <PolarAngleAxis dataKey="subject" tick={{ fill: '#9ca3af', fontSize: 10, fontWeight: 800 }} />
                                         <PolarRadiusAxis angle={30} domain={[0, 'auto']} tick={false} axisLine={false} />
@@ -331,57 +390,95 @@ const ResumeBuilder: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* 2. Improvements List (Diff View) */}
-                    <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border dark:border-slate-800 shadow-sm">
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-xl font-black dark:text-white flex items-center gap-2">
-                                <Zap size={20} className="text-brand-600" /> High-Impact Fixes
-                            </h3>
+                    {/* 2. ATS Killers (Alert) */}
+                    {analysis.ats_score.ats_killers.length > 0 && (
+                        <div className="bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 p-6 rounded-[2rem]">
+                            <div className="flex items-center gap-2 mb-3">
+                                <AlertTriangle className="text-red-600" size={20} />
+                                <h3 className="font-black text-red-700 dark:text-red-400 uppercase tracking-widest text-sm">ATS Killers Detected</h3>
+                            </div>
+                            <ul className="space-y-2">
+                                {analysis.ats_score.ats_killers.map((killer, idx) => (
+                                    <li key={idx} className="flex gap-2 text-sm text-red-800 dark:text-red-300 font-medium">
+                                        <span className="text-red-400">•</span> {killer}
+                                    </li>
+                                ))}
+                            </ul>
                         </div>
-                        <div className="space-y-6 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                            {analysis.bullet_improvements.map((item, idx) => (
-                                <div key={idx} className="space-y-2">
-                                    <div className="flex items-center gap-2">
-                                        <span className="w-5 h-5 rounded-full bg-gray-100 dark:bg-slate-800 text-xs font-bold flex items-center justify-center">{idx + 1}</span>
-                                        <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">{item.improvement_type}</span>
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="p-4 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 rounded-2xl">
-                                            <p className="text-[10px] font-black text-red-500 uppercase mb-2">Original</p>
-                                            <p className="text-sm text-red-800 dark:text-red-300 line-through opacity-70">{item.original}</p>
-                                        </div>
-                                        <div className="p-4 bg-green-50 dark:bg-green-900/10 border border-green-100 dark:border-green-900/20 rounded-2xl relative">
-                                            <div className="absolute top-4 right-4 text-green-500">
-                                                <Sparkles size={14} />
-                                            </div>
-                                            <p className="text-[10px] font-black text-green-600 uppercase mb-2">AI Rewrite</p>
-                                            <p className="text-sm font-bold text-green-900 dark:text-green-300">{item.improved}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                    )}
+
+                    {/* 3. Recruiter Reality Check */}
+                    <div className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 p-6 rounded-[2rem] shadow-xl">
+                        <h3 className="font-black text-brand-400 dark:text-brand-600 uppercase tracking-widest text-xs mb-2">Recruiter Reality Check</h3>
+                        <p className="text-lg font-bold leading-relaxed italic">
+                            "{analysis.recruiter_reality_check}"
+                        </p>
                     </div>
 
-                    {/* 3. Keyword Gaps */}
+                    {/* 4. Detailed Keyword Gaps */}
                     <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border dark:border-slate-800 shadow-sm">
-                        <h3 className="text-lg font-black dark:text-white mb-4 flex items-center gap-2">
+                        <h3 className="text-lg font-black dark:text-white mb-6 flex items-center gap-2">
                             <TrendingUp size={20} className="text-brand-600" /> Keyword Gap Analysis
                         </h3>
-                        <div className="flex flex-wrap gap-2">
-                            {analysis.keyword_analysis.missing_critical.length > 0 ? (
-                                analysis.keyword_analysis.missing_critical.map(k => (
-                                    <span key={k} className="px-3 py-1.5 bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/20 rounded-xl text-xs font-bold flex items-center gap-1">
-                                        <AlertCircle size={10} /> {k}
-                                    </span>
-                                ))
-                            ) : (
-                                <span className="text-gray-400 italic text-sm">No critical keywords missing. Great job!</span>
-                            )}
+                        
+                        <div className="space-y-6">
+                            {/* Critical */}
+                            <div className="space-y-3">
+                                <p className="text-[10px] font-black text-red-500 uppercase tracking-widest flex items-center gap-2">
+                                   <ShieldAlert size={12} /> Critical (Must Have)
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                    {analysis.keyword_analysis.critical.length > 0 ? (
+                                        analysis.keyword_analysis.critical.map(k => (
+                                            <div key={k.keyword} className="px-3 py-2 bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/20 rounded-xl text-xs font-bold flex flex-col">
+                                                <span>{k.keyword}</span>
+                                                <span className="text-[9px] opacity-70 font-medium">Add to: {k.placement_suggestion}</span>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <span className="text-gray-400 italic text-sm">None missing. Excellent!</span>
+                                    )}
+                                </div>
+                            </div>
+                            
+                            {/* Important */}
+                            <div className="space-y-3">
+                                <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest flex items-center gap-2">
+                                   <AlertCircle size={12} /> Important
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                    {analysis.keyword_analysis.important.map(k => (
+                                        <div key={k.keyword} className="px-3 py-1.5 bg-orange-50 dark:bg-orange-900/10 text-orange-600 dark:text-orange-400 border border-orange-100 dark:border-orange-900/20 rounded-xl text-xs font-bold">
+                                            {k.keyword}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                     </div>
+                    
+                    {/* 5. Final Verdict */}
+                    <div className="bg-gray-50 dark:bg-slate-900 border dark:border-slate-800 p-8 rounded-[2.5rem]">
+                        <div className="flex justify-between items-start mb-4">
+                            <div>
+                                <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Final Verdict</p>
+                                <h3 className="text-2xl font-black dark:text-white">{analysis.verdict.status}</h3>
+                            </div>
+                            <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 rounded-xl border dark:border-slate-700">
+                                <Clock size={16} className="text-brand-600" />
+                                <span className="text-xs font-bold text-gray-600 dark:text-gray-300">Est. Fix Time: {analysis.verdict.time_to_fix}</span>
+                            </div>
+                        </div>
+                        <ul className="space-y-2">
+                            {analysis.verdict.reasons.map((r, i) => (
+                                <li key={i} className="text-sm font-medium text-gray-600 dark:text-gray-400 flex gap-2">
+                                    <CheckCircle2 size={16} className="text-green-500 flex-shrink-0" /> {r}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
 
-                    {/* 4. Chat Interface (Integrated) */}
+                    {/* 6. Chat Interface (Integrated) */}
                     <div className="bg-brand-900 dark:bg-slate-950 text-white p-1 rounded-[2.5rem] shadow-2xl overflow-hidden">
                         <div className="bg-brand-800/50 dark:bg-slate-900/50 p-6 flex justify-between items-center cursor-pointer" onClick={() => setIsChatOpen(!isChatOpen)}>
                              <div className="flex items-center gap-3">
@@ -390,7 +487,7 @@ const ResumeBuilder: React.FC = () => {
                                  </div>
                                  <div>
                                      <h3 className="font-bold">Resume Assistant</h3>
-                                     <p className="text-xs text-brand-200">Ask questions about your ATS analysis</p>
+                                     <p className="text-xs text-brand-200">Ask specific questions about the audit</p>
                                  </div>
                              </div>
                              <div className={`transition-transform duration-300 ${isChatOpen ? 'rotate-180' : ''}`}>
@@ -422,7 +519,7 @@ const ResumeBuilder: React.FC = () => {
                                         value={chatInput}
                                         onChange={(e) => setChatInput(e.target.value)}
                                         onKeyDown={(e) => e.key === 'Enter' && handleChatSubmit()}
-                                        placeholder="E.g., How do I fix the formatting?"
+                                        placeholder="E.g., Rewrite the second bullet point..."
                                         className="flex-1 bg-white/10 border-none rounded-xl px-4 py-3 text-sm text-white placeholder-brand-300 focus:ring-2 focus:ring-brand-400 outline-none"
                                     />
                                     <button 

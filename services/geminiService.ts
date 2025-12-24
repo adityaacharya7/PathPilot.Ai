@@ -150,18 +150,23 @@ export const analyzeResumeATS = async (
   const systemPrompt = `
     You are an expert ATS (Applicant Tracking System) analyst, professional resume writer, and technical recruiter.
 
-    Your task is to:
-    1. Analyze the provided resume (either text or file) strictly from an ATS + recruiter screening perspective.
-    2. Score the resume based on real ATS parsing rules.
-    3. Optimize the resume for higher interview selection probability.
-    4. Rewrite content using strong action verbs, quantified impact, and role-aligned keywords.
+    Analyze the provided resume strictly from an ATS + recruiter screening perspective.
+    Be honest, decisive, and actionable. Avoid generic advice.
+
+    INPUT CONTEXT:
+    - TARGET_ROLE: ${targetRole}
+    - JOB_DESCRIPTION: ${jobDescription}
+    - EXPERIENCE_LEVEL: ${experienceLevel}
+    - INDUSTRY: ${industry}
+
+    Your output must strictly follow the JSON schema provided to populate the following sections:
     
-    TARGET_ROLE: ${targetRole}
-    JOB_DESCRIPTION: ${jobDescription}
-    EXPERIENCE_LEVEL: ${experienceLevel}
-    INDUSTRY: ${industry}
-    
-    Analyze and output JSON based on the schema provided.
+    1. ATS SCORE: Current score, Projected score after fixes, Confidence level, and Top 3 factors lowering the score.
+    2. METRICS BREAKDOWN: Keywords, Role Alignment, Impact, Formatting, Completeness. Identify the Top 2 "ATS Killers".
+    3. HIGH-IMPACT FIXES: Rewrite weak bullets. Provide conservative vs aggressive options if needed (choose one best fit), explain WHY it works (quantification, keywords).
+    4. KEYWORD GAP ANALYSIS: Classify into Critical (Must-have), Important, and Nice-to-have. Suggest where to add them.
+    5. VERDICT: "Not ATS Ready", "Partially Ready", or "Interview Ready". Estimated time to fix.
+    6. RECRUITER REALITY CHECK: A blunt 1-2 line assessment of performance.
   `;
 
   let requestContents;
@@ -193,7 +198,7 @@ export const analyzeResumeATS = async (
   }
 
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview", // Supports multimodal input
+    model: "gemini-3-flash-preview",
     contents: requestContents,
     config: {
       responseMimeType: "application/json",
@@ -204,6 +209,8 @@ export const analyzeResumeATS = async (
             type: Type.OBJECT,
             properties: {
               total: { type: Type.NUMBER },
+              projected_score: { type: Type.STRING },
+              confidence: { type: Type.STRING, enum: ["High", "Medium", "Low"] },
               breakdown: {
                 type: Type.OBJECT,
                 properties: {
@@ -215,27 +222,29 @@ export const analyzeResumeATS = async (
                 },
                 required: ["keyword_relevance", "formatting", "content_strength", "role_alignment", "completeness"]
               },
-              summary: { type: Type.STRING }
+              summary: { type: Type.STRING },
+              top_factors: { type: Type.ARRAY, items: { type: Type.STRING } },
+              ats_killers: { type: Type.ARRAY, items: { type: Type.STRING } }
             },
-            required: ["total", "breakdown", "summary"]
+            required: ["total", "projected_score", "confidence", "breakdown", "summary", "top_factors", "ats_killers"]
           },
           keyword_analysis: {
             type: Type.OBJECT,
             properties: {
-              missing_critical: { type: Type.ARRAY, items: { type: Type.STRING } },
-              underused: { type: Type.ARRAY, items: { type: Type.STRING } },
-              irrelevant: { type: Type.ARRAY, items: { type: Type.STRING } },
-              classification: {
-                type: Type.OBJECT,
-                properties: {
-                  technical: { type: Type.ARRAY, items: { type: Type.STRING } },
-                  tools: { type: Type.ARRAY, items: { type: Type.STRING } },
-                  soft_skills: { type: Type.ARRAY, items: { type: Type.STRING } },
-                  role_specific: { type: Type.ARRAY, items: { type: Type.STRING } }
-                }
-              }
+              critical: { 
+                  type: Type.ARRAY, 
+                  items: { type: Type.OBJECT, properties: { keyword: {type: Type.STRING}, frequency: {type: Type.STRING}, placement_suggestion: {type: Type.STRING} } } 
+              },
+              important: { 
+                  type: Type.ARRAY, 
+                  items: { type: Type.OBJECT, properties: { keyword: {type: Type.STRING}, frequency: {type: Type.STRING}, placement_suggestion: {type: Type.STRING} } } 
+              },
+              nice_to_have: { 
+                  type: Type.ARRAY, 
+                  items: { type: Type.OBJECT, properties: { keyword: {type: Type.STRING}, frequency: {type: Type.STRING}, placement_suggestion: {type: Type.STRING} } } 
+              },
             },
-            required: ["missing_critical"]
+            required: ["critical", "important", "nice_to_have"]
           },
           bullet_improvements: {
             type: Type.ARRAY,
@@ -244,8 +253,13 @@ export const analyzeResumeATS = async (
               properties: {
                 original: { type: Type.STRING },
                 improved: { type: Type.STRING },
-                improvement_type: { type: Type.STRING }
-              }
+                status: { type: Type.STRING, enum: ["Weak", "Average", "Strong"] },
+                improvement_type: { type: Type.STRING },
+                rewrite_mode: { type: Type.STRING, enum: ["Conservative", "Aggressive"] },
+                why_it_works: { type: Type.ARRAY, items: { type: Type.STRING } },
+                issue_note: { type: Type.STRING }
+              },
+              required: ["original", "improved", "status", "why_it_works"]
             }
           },
           formatting_feedback: {
@@ -255,24 +269,18 @@ export const analyzeResumeATS = async (
               suggestions: { type: Type.ARRAY, items: { type: Type.STRING } }
             }
           },
-          role_specific_improvements: {
-            type: Type.OBJECT,
-            properties: {
-              skills_to_add: { type: Type.ARRAY, items: { type: Type.STRING } },
-              sections_to_enhance: { type: Type.ARRAY, items: { type: Type.STRING } }
-            }
-          },
           verdict: {
             type: Type.OBJECT,
             properties: {
-              estimated_post_fix_score: { type: Type.NUMBER },
-              status: { type: Type.STRING, enum: ["Not Ready", "Partially Ready", "Interview Ready"] },
-              checklist: { type: Type.ARRAY, items: { type: Type.STRING } }
+              status: { type: Type.STRING, enum: ["Not ATS Ready", "Partially Ready", "Interview Ready"] },
+              reasons: { type: Type.ARRAY, items: { type: Type.STRING } },
+              time_to_fix: { type: Type.STRING }
             },
-            required: ["status", "checklist", "estimated_post_fix_score"]
-          }
+            required: ["status", "reasons", "time_to_fix"]
+          },
+          recruiter_reality_check: { type: Type.STRING }
         },
-        required: ["ats_score", "keyword_analysis", "bullet_improvements", "verdict"]
+        required: ["ats_score", "keyword_analysis", "bullet_improvements", "verdict", "recruiter_reality_check"]
       }
     }
   });
@@ -304,10 +312,6 @@ export const chatWithResume = async (
       `,
     }
   });
-
-  // Replay history to build context
-  // Note: For a real app, you'd manage history better to avoid token limits.
-  // Here we just send the last message for MVP simplicity or reconstruct if needed.
   
   const result = await chat.sendMessage({ message: currentMessage });
   return result.text || "I couldn't process that request.";

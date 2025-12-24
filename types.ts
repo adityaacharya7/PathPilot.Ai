@@ -61,9 +61,17 @@ export interface ChatMessage {
   content: string;
 }
 
+export interface KeywordGap {
+  keyword: string;
+  frequency: string; // e.g. "High in JD"
+  placement_suggestion: string; // e.g. "Skills Section"
+}
+
 export interface ATSAnalysis {
   ats_score: {
     total: number;
+    projected_score: string;
+    confidence: 'High' | 'Medium' | 'Low';
     breakdown: {
       keyword_relevance: number;
       formatting: number;
@@ -72,34 +80,31 @@ export interface ATSAnalysis {
       completeness: number;
     };
     summary: string;
+    top_factors: string[]; // Top 3 factors lowering score
+    ats_killers: string[]; // Top 2 damaging issues
   };
   keyword_analysis: {
-    missing_critical: string[];
-    underused: string[];
-    irrelevant: string[];
-    classification: {
-      technical: string[];
-      tools: string[];
-      soft_skills: string[];
-      role_specific: string[];
-    };
+    critical: KeywordGap[];
+    important: KeywordGap[];
+    nice_to_have: KeywordGap[];
   };
   bullet_improvements: {
     original: string;
     improved: string;
-    improvement_type: string; // e.g. "Action Verb", "Quantified Impact"
+    status: 'Weak' | 'Average' | 'Strong';
+    improvement_type: string;
+    rewrite_mode: 'Conservative' | 'Aggressive';
+    why_it_works: string[];
+    issue_note?: string; // E.g. "Reduces score by X points..."
   }[];
   formatting_feedback: {
     issues: string[];
     suggestions: string[];
   };
-  role_specific_improvements: {
-    skills_to_add: string[];
-    sections_to_enhance: string[];
-  };
   verdict: {
-    estimated_post_fix_score: number;
-    status: 'Not Ready' | 'Partially Ready' | 'Interview Ready';
-    checklist: string[];
+    status: 'Not ATS Ready' | 'Partially Ready' | 'Interview Ready';
+    reasons: string[];
+    time_to_fix: string;
   };
+  recruiter_reality_check: string; // Blunt assessment
 }
