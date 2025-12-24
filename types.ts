@@ -9,6 +9,31 @@ export interface UserProfile {
   currentLevel: 'Beginner' | 'Intermediate' | 'Advanced';
 }
 
+export interface RoadmapNode {
+  id: string;
+  label: string;
+  order: number;
+  mandatory: boolean;
+  description?: string; // Optional field for UI richness
+}
+
+export interface RoadmapSection {
+  section_name: string;
+  learning_stage: string;
+  nodes: RoadmapNode[];
+}
+
+export interface RoadmapData {
+  role: string;
+  roadmap_style: string;
+  sections: RoadmapSection[];
+  dependencies: { from: string; to: string }[];
+  learning_notes: {
+    order_not_strict: boolean;
+    beginner_friendly: boolean;
+  };
+}
+
 export interface Internship {
   id: string;
   company: string;
@@ -20,12 +45,6 @@ export interface Internship {
   matchScore: number;
 }
 
-export interface RoadmapNode {
-  topic: string;
-  resources: { name: string; url: string }[];
-  status: 'pending' | 'completed';
-}
-
 export interface PrepPlan {
   dailyPlan: string;
   milestones: string[];
@@ -35,4 +54,38 @@ export interface PrepPlan {
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+}
+
+export interface ATSAnalysis {
+  ats_score: number;
+  ats_summary: {
+    strengths: string[];
+    weaknesses: string[];
+    quick_fixes: string[];
+  };
+  bullet_improvements: {
+    original: string;
+    improved: string;
+    keywords_added: string[];
+    ats_reasoning: string;
+  }[];
+  skill_gap_analysis: {
+    high_priority: string[];
+    medium_priority: string[];
+    optional: string[];
+  };
+  recommended_template: {
+    template_name: string;
+    best_for_roles: string[];
+    why_it_works_for_ats: string;
+  };
+  generated_resume: {
+    sections: {
+      summary: string;
+      experience: string[];
+      projects: string[];
+      skills: string[];
+      education: string[];
+    };
+  };
 }

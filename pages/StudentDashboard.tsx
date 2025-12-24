@@ -1,7 +1,6 @@
 
 import React from 'react';
-/* Added Bot to the imports from lucide-react */
-import { Target, CheckCircle, Clock, TrendingUp, ArrowRight, User as UserIcon, Calendar, Star, ChevronRight, Bot } from 'lucide-react';
+import { Target, CheckCircle, Clock, TrendingUp, ArrowRight, User as UserIcon, Calendar, Star, ChevronRight, Bot, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useUser } from '../App';
 
@@ -37,8 +36,8 @@ const StudentDashboard: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <StatCard icon={<Target className="text-indigo-600" />} label="Focus" value={user?.targetRole || 'Not Set'} />
         <StatCard icon={<TrendingUp className="text-green-600" />} label="Level" value={user?.currentLevel || 'Beginner'} />
-        <StatCard icon={<Calendar className="text-orange-600" />} label="Batch" value={`Class of ${user?.graduationYear}`} />
-        <StatCard icon={<Star className="text-brand-600" />} label="Ranking" value="Top 15%" />
+        <StatCard icon={<ShieldCheck className="text-brand-600" />} label="ATS Score" value="82%" />
+        <StatCard icon={<Star className="text-orange-600" />} label="Batch" value={`Class of ${user?.graduationYear}`} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -58,7 +57,7 @@ const StudentDashboard: React.FC = () => {
             </div>
           </section>
 
-          {/* New: Upcoming Career Timeline */}
+          {/* Upcoming Career Timeline */}
           <section className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border dark:border-slate-800 shadow-sm">
             <h2 className="text-2xl font-black mb-8 dark:text-white tracking-tight">Upcoming Opportunities</h2>
             <div className="space-y-6">
@@ -87,10 +86,10 @@ const StudentDashboard: React.FC = () => {
             <div className="relative z-10">
               <h3 className="text-2xl font-black mb-4">AI Insight</h3>
               <p className="text-brand-100 text-base mb-8 leading-relaxed font-medium">
-                "{user?.name.split(' ')[0]}, your React skills are high, but you haven't practiced System Design. Shall we start a roadmap for that?"
+                "{user?.name.split(' ')[0]}, your React skills are high, but your ATS score is low for {user?.targetRole}. Let's optimize your resume!"
               </p>
-              <Link to="/advisor" className="block w-full py-5 bg-white text-brand-600 rounded-2xl font-bold text-center hover:bg-brand-50 transition-all shadow-xl shadow-brand-900/10 active:scale-[0.98]">
-                Start AI Session
+              <Link to="/resume" className="block w-full py-5 bg-white text-brand-600 rounded-2xl font-bold text-center hover:bg-brand-50 transition-all shadow-xl shadow-brand-900/10 active:scale-[0.98]">
+                Boost ATS Score
               </Link>
             </div>
           </div>
