@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { RoadmapData, PrepPlan, UserProfile, ATSAnalysis } from "../types";
+import { RoadmapData, PrepPlan, UserProfile, ATSAnalysis, ChatMessage } from "../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
@@ -106,7 +106,6 @@ export const generateDynamicRoadmap = async (
   return JSON.parse(response.text || '{}');
 };
 
-// ... keep other existing functions ...
 export const getCareerAdvice = async (history: { role: string; content: string }[], profile: UserProfile) => {
   const chat = ai.chats.create({
     model: 'gemini-3-flash-preview',
@@ -139,24 +138,104 @@ export const generatePrepPlan = async (targetRole: string, days: number, current
   return JSON.parse(response.text || '{}');
 };
 
-export const analyzeResumeATS = async (resumeData: any, targetRole: string): Promise<ATSAnalysis> => {
+export const analyzeResumeATS = async (
+  resumeData: any, 
+  targetRole: string,
+  jobDescription: string = "NONE",
+  experienceLevel: string = "Junior",
+  industry: string = "Tech",
+  fileData?: { data: string; mimeType: string }
+): Promise<ATSAnalysis> => {
+  
+  const systemPrompt = `
+    You are an expert ATS (Applicant Tracking System) analyst, professional resume writer, and technical recruiter.
+
+    Your task is to:
+    1. Analyze the provided resume (either text or file) strictly from an ATS + recruiter screening perspective.
+    2. Score the resume based on real ATS parsing rules.
+    3. Optimize the resume for higher interview selection probability.
+    4. Rewrite content using strong action verbs, quantified impact, and role-aligned keywords.
+    
+    TARGET_ROLE: ${targetRole}
+    JOB_DESCRIPTION: ${jobDescription}
+    EXPERIENCE_LEVEL: ${experienceLevel}
+    INDUSTRY: ${industry}
+    
+    Analyze and output JSON based on the schema provided.
+  `;
+
+  let requestContents;
+
+  if (fileData) {
+    // Multimodal Request (File + Text)
+    requestContents = {
+      parts: [
+        {
+          inlineData: {
+            mimeType: fileData.mimeType,
+            data: fileData.data
+          }
+        },
+        {
+          text: systemPrompt
+        }
+      ]
+    };
+  } else {
+    // Text-only Request
+    requestContents = {
+      parts: [
+        {
+          text: `${systemPrompt}\n\nRESUME_TEXT:\n${JSON.stringify(resumeData)}`
+        }
+      ]
+    };
+  }
+
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: `Analyze this resume for ${targetRole}.`,
+    model: "gemini-3-flash-preview", // Supports multimodal input
+    contents: requestContents,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
         properties: {
-          ats_score: { type: Type.NUMBER },
-          ats_summary: {
+          ats_score: {
             type: Type.OBJECT,
             properties: {
-              strengths: { type: Type.ARRAY, items: { type: Type.STRING } },
-              weaknesses: { type: Type.ARRAY, items: { type: Type.STRING } },
-              quick_fixes: { type: Type.ARRAY, items: { type: Type.STRING } }
+              total: { type: Type.NUMBER },
+              breakdown: {
+                type: Type.OBJECT,
+                properties: {
+                  keyword_relevance: { type: Type.NUMBER },
+                  formatting: { type: Type.NUMBER },
+                  content_strength: { type: Type.NUMBER },
+                  role_alignment: { type: Type.NUMBER },
+                  completeness: { type: Type.NUMBER }
+                },
+                required: ["keyword_relevance", "formatting", "content_strength", "role_alignment", "completeness"]
+              },
+              summary: { type: Type.STRING }
             },
-            required: ["strengths", "weaknesses", "quick_fixes"]
+            required: ["total", "breakdown", "summary"]
+          },
+          keyword_analysis: {
+            type: Type.OBJECT,
+            properties: {
+              missing_critical: { type: Type.ARRAY, items: { type: Type.STRING } },
+              underused: { type: Type.ARRAY, items: { type: Type.STRING } },
+              irrelevant: { type: Type.ARRAY, items: { type: Type.STRING } },
+              classification: {
+                type: Type.OBJECT,
+                properties: {
+                  technical: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  tools: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  soft_skills: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  role_specific: { type: Type.ARRAY, items: { type: Type.STRING } }
+                }
+              }
+            },
+            required: ["missing_critical"]
           },
           bullet_improvements: {
             type: Type.ARRAY,
@@ -165,45 +244,71 @@ export const analyzeResumeATS = async (resumeData: any, targetRole: string): Pro
               properties: {
                 original: { type: Type.STRING },
                 improved: { type: Type.STRING },
-                keywords_added: { type: Type.ARRAY, items: { type: Type.STRING } },
-                ats_reasoning: { type: Type.STRING }
+                improvement_type: { type: Type.STRING }
               }
             }
           },
-          skill_gap_analysis: {
+          formatting_feedback: {
             type: Type.OBJECT,
             properties: {
-              high_priority: { type: Type.ARRAY, items: { type: Type.STRING } },
-              medium_priority: { type: Type.ARRAY, items: { type: Type.STRING } },
-              optional: { type: Type.ARRAY, items: { type: Type.STRING } }
+              issues: { type: Type.ARRAY, items: { type: Type.STRING } },
+              suggestions: { type: Type.ARRAY, items: { type: Type.STRING } }
             }
           },
-          recommended_template: {
+          role_specific_improvements: {
             type: Type.OBJECT,
             properties: {
-              template_name: { type: Type.STRING },
-              best_for_roles: { type: Type.ARRAY, items: { type: Type.STRING } },
-              why_it_works_for_ats: { type: Type.STRING }
+              skills_to_add: { type: Type.ARRAY, items: { type: Type.STRING } },
+              sections_to_enhance: { type: Type.ARRAY, items: { type: Type.STRING } }
             }
           },
-          generated_resume: {
+          verdict: {
             type: Type.OBJECT,
             properties: {
-              sections: {
-                type: Type.OBJECT,
-                properties: {
-                  summary: { type: Type.STRING },
-                  experience: { type: Type.ARRAY, items: { type: Type.STRING } },
-                  projects: { type: Type.ARRAY, items: { type: Type.STRING } },
-                  skills: { type: Type.ARRAY, items: { type: Type.STRING } },
-                  education: { type: Type.ARRAY, items: { type: Type.STRING } }
-                }
-              }
-            }
+              estimated_post_fix_score: { type: Type.NUMBER },
+              status: { type: Type.STRING, enum: ["Not Ready", "Partially Ready", "Interview Ready"] },
+              checklist: { type: Type.ARRAY, items: { type: Type.STRING } }
+            },
+            required: ["status", "checklist", "estimated_post_fix_score"]
           }
-        }
+        },
+        required: ["ats_score", "keyword_analysis", "bullet_improvements", "verdict"]
       }
     }
   });
   return JSON.parse(response.text || '{}');
+};
+
+export const chatWithResume = async (
+    chatHistory: ChatMessage[], 
+    resumeContext: any, 
+    currentMessage: string
+): Promise<string> => {
+  
+  const contextString = typeof resumeContext === 'string' 
+    ? resumeContext 
+    : JSON.stringify(resumeContext);
+
+  const chat = ai.chats.create({
+    model: 'gemini-3-flash-preview',
+    config: {
+      systemInstruction: `You are a Resume Copilot. The user has uploaded their resume and received an ATS analysis.
+      
+      RESUME CONTEXT:
+      ${contextString.substring(0, 5000)}
+
+      Your goal is to answer specific questions to help them improve it.
+      - If they ask "rewrite this", provide a concrete, better version.
+      - If they ask about formatting, give specific advice.
+      - Keep answers concise and actionable.
+      `,
+    }
+  });
+
+  // Replay history to build context
+  // Note: For a real app, you'd manage history better to avoid token limits.
+  // Here we just send the last message for MVP simplicity or reconstruct if needed.
+  
+  const result = await chat.sendMessage({ message: currentMessage });
+  return result.text || "I couldn't process that request.";
 };

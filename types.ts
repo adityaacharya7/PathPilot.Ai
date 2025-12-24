@@ -62,35 +62,44 @@ export interface ChatMessage {
 }
 
 export interface ATSAnalysis {
-  ats_score: number;
-  ats_summary: {
-    strengths: string[];
-    weaknesses: string[];
-    quick_fixes: string[];
+  ats_score: {
+    total: number;
+    breakdown: {
+      keyword_relevance: number;
+      formatting: number;
+      content_strength: number;
+      role_alignment: number;
+      completeness: number;
+    };
+    summary: string;
+  };
+  keyword_analysis: {
+    missing_critical: string[];
+    underused: string[];
+    irrelevant: string[];
+    classification: {
+      technical: string[];
+      tools: string[];
+      soft_skills: string[];
+      role_specific: string[];
+    };
   };
   bullet_improvements: {
     original: string;
     improved: string;
-    keywords_added: string[];
-    ats_reasoning: string;
+    improvement_type: string; // e.g. "Action Verb", "Quantified Impact"
   }[];
-  skill_gap_analysis: {
-    high_priority: string[];
-    medium_priority: string[];
-    optional: string[];
+  formatting_feedback: {
+    issues: string[];
+    suggestions: string[];
   };
-  recommended_template: {
-    template_name: string;
-    best_for_roles: string[];
-    why_it_works_for_ats: string;
+  role_specific_improvements: {
+    skills_to_add: string[];
+    sections_to_enhance: string[];
   };
-  generated_resume: {
-    sections: {
-      summary: string;
-      experience: string[];
-      projects: string[];
-      skills: string[];
-      education: string[];
-    };
+  verdict: {
+    estimated_post_fix_score: number;
+    status: 'Not Ready' | 'Partially Ready' | 'Interview Ready';
+    checklist: string[];
   };
 }
