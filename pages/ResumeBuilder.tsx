@@ -364,7 +364,7 @@ const ResumeBuilder: React.FC = () => {
                     <div className="h-32 w-32 relative flex-shrink-0">
                       <ResponsiveContainer width="100%" height="100%">
                         <RadialBarChart innerRadius="80%" outerRadius="100%" barSize={15} data={radialData} startAngle={90} endAngle={-270}>
-                          <RadialBar background clockWise dataKey="value" cornerRadius={10} />
+                          <RadialBar background dataKey="value" cornerRadius={10} />
                         </RadialBarChart>
                       </ResponsiveContainer>
                       <div className="absolute inset-0 flex items-center justify-center flex-col">

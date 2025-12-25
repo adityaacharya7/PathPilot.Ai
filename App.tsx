@@ -22,7 +22,7 @@ import ProfileSetup from './pages/ProfileSetup';
 const ThemeContext = createContext({ isDark: false, toggle: () => { } });
 const UserContext = createContext<{
   user: UserProfile | null,
-  login: (u: UserProfile) => void,
+  login: (u?: UserProfile) => void,
   logout: () => void,
   updateProfile: (u: UserProfile) => void
 }>({
