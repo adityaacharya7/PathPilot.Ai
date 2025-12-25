@@ -64,9 +64,9 @@ const Landing: React.FC = () => {
         <div className="absolute inset-0 z-0 block h-full w-full">
           <Ballpit
             count={50}
-            gravity={0}
-            friction={0.95}
-            wallBounce={0.95}
+            gravity={0.7}
+            friction={0.8}
+            wallBounce={0.8}
             followCursor={true}
             colors={[0x3B82F6, 0x000000, 0xFFFFFF]}
           />
