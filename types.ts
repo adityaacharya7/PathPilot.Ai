@@ -7,6 +7,14 @@ export interface UserProfile {
   skills: string[];
   graduationYear: string;
   currentLevel: 'Beginner' | 'Intermediate' | 'Advanced';
+  atsScore?: number;
+  atsBreakdown?: {
+    keyword_relevance: number;
+    formatting: number;
+    content_strength: number;
+    role_alignment: number;
+    completeness: number;
+  };
 }
 
 export interface RoadmapNode {

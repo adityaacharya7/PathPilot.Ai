@@ -15,7 +15,7 @@ import {
 import ReactMarkdown from 'react-markdown';
 
 const ResumeBuilder: React.FC = () => {
-  const { user } = useUser();
+  const { user, updateProfile } = useUser();
   const [activeTab, setActiveTab] = useState<'upload' | 'manual'>('upload');
 
   // Manual Data State
@@ -115,6 +115,15 @@ const ResumeBuilder: React.FC = () => {
       );
 
       setAnalysis(result);
+
+      // SAVE TO PROFILE
+      if (user && result.ats_score.total) {
+        updateProfile({
+          ...user,
+          atsScore: result.ats_score.total,
+          atsBreakdown: result.ats_score.breakdown
+        });
+      }
 
       // Initialize Chat
       setChatMessages([{

@@ -1,11 +1,27 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Target, CheckCircle, Clock, TrendingUp, ArrowRight, User as UserIcon, Calendar, Star, ChevronRight, Bot, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useUser } from '../App';
+import { fetchJobs, Job } from '../src/services/jobService';
 
 const StudentDashboard: React.FC = () => {
   const { user } = useUser();
+  const [opportunities, setOpportunities] = useState<Job[]>([]);
+  const [loadingJobs, setLoadingJobs] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      setLoadingJobs(true);
+      fetchJobs(user).then(jobs => {
+        setOpportunities(jobs.slice(0, 5)); // Top 5 matches
+        setLoadingJobs(false);
+      });
+    }
+  }, [user]);
+
+  // Resume Nudge Logic
+  const showResumeNudge = !user?.atsScore;
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-10 animate-in fade-in duration-700">
@@ -19,24 +35,41 @@ const StudentDashboard: React.FC = () => {
           </p>
         </div>
         <div className="relative">
-           <div className="w-16 h-16 rounded-3xl border-4 border-white dark:border-slate-900 shadow-xl overflow-hidden bg-brand-100 ring-4 ring-brand-500/10">
-             {user?.avatar ? (
-                <img src={user.avatar} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-             ) : (
-                <div className="flex items-center justify-center h-full text-brand-600">
-                  <UserIcon size={32} />
-                </div>
-             )}
-           </div>
-           <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 border-4 border-white dark:border-slate-950 rounded-full shadow-sm"></div>
+          <div className="w-16 h-16 rounded-3xl border-4 border-white dark:border-slate-900 shadow-xl overflow-hidden bg-brand-100 ring-4 ring-brand-500/10">
+            {user?.avatar ? (
+              <img src={user.avatar} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            ) : (
+              <div className="flex items-center justify-center h-full text-brand-600">
+                <UserIcon size={32} />
+              </div>
+            )}
+          </div>
+          <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 border-4 border-white dark:border-slate-950 rounded-full shadow-sm"></div>
         </div>
       </header>
+
+      {/* Resume Nudge Popup */}
+      {showResumeNudge && (
+        <div className="fixed top-24 right-8 z-50 animate-in slide-in-from-right-10 duration-700 delay-1000">
+          <Link to="/resume" className="group">
+            <div className="bg-white dark:bg-slate-900 p-4 pl-5 rounded-2xl shadow-2xl border-l-4 border-brand-500 flex items-center gap-4 max-w-sm hover:scale-105 transition-transform">
+              <div>
+                <p className="text-xs font-black text-brand-600 uppercase tracking-widest mb-1">Action Required</p>
+                <p className="text-sm font-bold dark:text-white">Upload your resume to unlock AI insights.</p>
+              </div>
+              <div className="w-10 h-10 bg-brand-50 dark:bg-slate-800 rounded-full flex items-center justify-center text-brand-600 group-hover:bg-brand-600 group-hover:text-white transition-colors">
+                <ArrowRight size={20} />
+              </div>
+            </div>
+          </Link>
+        </div>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <StatCard icon={<Target className="text-indigo-600" />} label="Focus" value={user?.targetRole || 'Not Set'} />
         <StatCard icon={<TrendingUp className="text-green-600" />} label="Level" value={user?.currentLevel || 'Beginner'} />
-        <StatCard icon={<ShieldCheck className="text-brand-600" />} label="ATS Score" value="82%" />
+        <StatCard icon={<ShieldCheck className="text-brand-600" />} label="ATS Score" value={user?.atsScore ? `${user.atsScore}%` : 'N/A'} />
         <StatCard icon={<Star className="text-orange-600" />} label="Batch" value={`Class of ${user?.graduationYear}`} />
       </div>
 
@@ -51,28 +84,54 @@ const StudentDashboard: React.FC = () => {
               </Link>
             </div>
             <div className="space-y-10">
-              <ProgressItem label="Technical Proficiency" progress={72} color="bg-brand-600" />
-              <ProgressItem label="Portfolio & Projects" progress={48} color="bg-blue-500" />
-              <ProgressItem label="Placement Readiness" progress={30} color="bg-emerald-500" />
+              <ProgressItem
+                // Strictness: Raw resume score (0-100) * 0.45 weighting factor. 
+                // A perfect 100/100 resume only contributes 45% to the roadmap.
+                label="Technical Proficiency"
+                progress={user?.atsBreakdown ? Math.round(user.atsBreakdown.keyword_relevance * 0.45) : 10}
+                color="bg-brand-600"
+              />
+              <ProgressItem
+                label="Portfolio & Projects"
+                progress={user?.atsBreakdown ? Math.round(user.atsBreakdown.content_strength * 0.45) : 10}
+                color="bg-blue-500"
+              />
+              <ProgressItem
+                label="Placement Readiness"
+                progress={user?.atsBreakdown ? Math.round(user.atsBreakdown.role_alignment * 0.45) : 5}
+                color="bg-emerald-500"
+              />
             </div>
           </section>
 
-          {/* Upcoming Career Timeline */}
+          {/* Upcoming Career Timeline (Dynamic Opportunities) */}
           <section className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border dark:border-slate-800 shadow-sm">
-            <h2 className="text-2xl font-black mb-8 dark:text-white tracking-tight">Upcoming Opportunities</h2>
+            <h2 className="text-2xl font-black mb-8 dark:text-white tracking-tight flex justify-between items-center">
+              <span>Smart Opportunities</span>
+              {!loadingJobs && <span className="text-xs bg-brand-100 dark:bg-brand-900/30 text-brand-600 px-3 py-1 rounded-full">{opportunities.length} Matched</span>}
+            </h2>
+
             <div className="space-y-6">
-               <TimelineItem 
-                 date="Nov 15" 
-                 title="Google SDE Internships Open" 
-                 desc="Prepare your referral and resume bullets by next Friday." 
-                 status="High Match"
-               />
-               <TimelineItem 
-                 date="Nov 22" 
-                 title="Mock Interview - System Design" 
-                 desc="Live session with industry experts from Stripe." 
-                 status="Registered"
-               />
+              {loadingJobs ? (
+                <div className="animate-pulse space-y-4">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="h-24 bg-gray-100 dark:bg-slate-800 rounded-3xl"></div>
+                  ))}
+                </div>
+              ) : opportunities.length > 0 ? (
+                opportunities.map((job) => (
+                  <TimelineItem
+                    key={job.id}
+                    date={new Date(job.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    title={`${job.title} @ ${job.company}`}
+                    desc={`${job.location} • ${(job.tags || []).slice(0, 3).join(', ')}`}
+                    status={job.matchScore ? `${job.matchScore}% Match` : 'New'}
+                    url={job.url}
+                  />
+                ))
+              ) : (
+                <p className="text-gray-500">No matching opportunities found yet.</p>
+              )}
             </div>
           </section>
         </div>
@@ -108,23 +167,23 @@ const StudentDashboard: React.FC = () => {
   );
 };
 
-const TimelineItem: React.FC<{ date: string, title: string, desc: string, status: string }> = ({ date, title, desc, status }) => (
-  <div className="flex gap-6 group cursor-pointer">
+const TimelineItem: React.FC<{ date: string, title: string, desc: string, status: string, url?: string }> = ({ date, title, desc, status, url }) => (
+  <div onClick={() => url && window.open(url, '_blank')} className="flex gap-6 group cursor-pointer">
     <div className="flex flex-col items-center">
-       <div className="text-xs font-black text-brand-600 dark:text-brand-400 uppercase tracking-widest">{date.split(' ')[0]}</div>
-       <div className="text-lg font-black dark:text-white">{date.split(' ')[1]}</div>
-       <div className="w-px h-full bg-gray-100 dark:bg-slate-800 group-last:bg-transparent mt-2"></div>
+      <div className="text-xs font-black text-brand-600 dark:text-brand-400 uppercase tracking-widest">{date}</div>
+      <div className="w-px h-full bg-gray-100 dark:bg-slate-800 group-last:bg-transparent mt-2"></div>
     </div>
     <div className="flex-1 pb-8">
-       <div className="bg-gray-50 dark:bg-slate-800/50 p-6 rounded-3xl border dark:border-slate-800 group-hover:border-brand-300 dark:group-hover:border-brand-500/50 transition-all">
-          <div className="flex justify-between items-start mb-2">
-             <h4 className="font-bold text-lg dark:text-white">{title}</h4>
-             <span className="px-3 py-1 bg-brand-100 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400 text-[10px] font-black uppercase rounded-lg">
-               {status}
-             </span>
-          </div>
-          <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{desc}</p>
-       </div>
+      <div className="bg-gray-50 dark:bg-slate-800/50 p-6 rounded-3xl border dark:border-slate-800 group-hover:border-brand-300 dark:group-hover:border-brand-500/50 transition-all">
+        <div className="flex justify-between items-start mb-2">
+          <h4 className="font-bold text-lg dark:text-white line-clamp-1">{title}</h4>
+          <span className={`px-3 py-1 text-[10px] font-black uppercase rounded-lg whitespace-nowrap ${status.includes('Match') ? 'bg-green-100 text-green-700' : 'bg-brand-100 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400'
+            }`}>
+            {status}
+          </span>
+        </div>
+        <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-2">{desc}</p>
+      </div>
     </div>
   </div>
 );
@@ -154,7 +213,7 @@ const ProgressItem: React.FC<{ label: string; progress: number; color: string }>
 const MilestoneItem: React.FC<{ date: string; task: string; isDone: boolean }> = ({ date, task, isDone }) => (
   <div className="flex gap-4 items-center group">
     <div className={`w-6 h-6 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${isDone ? 'bg-brand-600 text-white shadow-lg shadow-brand-500/20' : 'bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-gray-600 border dark:border-slate-700'}`}>
-       {isDone ? <CheckCircle size={14} /> : <div className="w-1 h-1 bg-current rounded-full" />}
+      {isDone ? <CheckCircle size={14} /> : <div className="w-1 h-1 bg-current rounded-full" />}
     </div>
     <div className="flex-1">
       <p className={`text-sm font-bold ${isDone ? 'text-gray-400 dark:text-gray-600 line-through' : 'text-gray-900 dark:text-white'}`}>{task}</p>
