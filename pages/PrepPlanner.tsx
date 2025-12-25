@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Calendar, AlertTriangle, Target, Loader2, Sparkles } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { generatePrepPlan } from '../services/geminiService';
+import { generatePrepPlan } from '../src/services/geminiService';
 import { PrepPlan } from '../types';
 
 const PrepPlanner: React.FC = () => {
@@ -34,7 +34,7 @@ const PrepPlanner: React.FC = () => {
         <div className="bg-white p-8 rounded-2xl border shadow-sm grid md:grid-cols-3 gap-6 items-end">
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2">Target Role</label>
-            <select 
+            <select
               className="w-full p-3 border rounded-xl bg-gray-50"
               value={role}
               onChange={(e) => setRole(e.target.value)}
@@ -48,7 +48,7 @@ const PrepPlanner: React.FC = () => {
           </div>
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2">Time Left</label>
-            <select 
+            <select
               className="w-full p-3 border rounded-xl bg-gray-50"
               value={days}
               onChange={(e) => setDays(Number(e.target.value))}
@@ -60,7 +60,7 @@ const PrepPlanner: React.FC = () => {
           </div>
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2">Current Level</label>
-            <select 
+            <select
               className="w-full p-3 border rounded-xl bg-gray-50"
               value={level}
               onChange={(e) => setLevel(e.target.value)}
@@ -71,7 +71,7 @@ const PrepPlanner: React.FC = () => {
             </select>
           </div>
           <div className="md:col-span-3">
-            <button 
+            <button
               onClick={handleGenerate}
               disabled={loading}
               className="w-full py-4 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 text-lg shadow-lg disabled:bg-indigo-400"

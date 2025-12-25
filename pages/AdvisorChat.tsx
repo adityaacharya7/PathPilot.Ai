@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Loader2, Sparkles, Trash2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { getCareerAdvice } from '../services/geminiService';
+import { getCareerAdvice } from '../src/services/geminiService';
 import { ChatMessage } from '../types';
 import { useUser } from '../App';
 
@@ -42,8 +42,8 @@ const AdvisorChat: React.FC = () => {
   };
 
   const clearChat = () => {
-    if(confirm('Clear conversation history?')) {
-        setMessages([{ role: 'assistant', content: `Chat cleared. How else can I help you today, ${user?.name.split(' ')[0]}?` }]);
+    if (confirm('Clear conversation history?')) {
+      setMessages([{ role: 'assistant', content: `Chat cleared. How else can I help you today, ${user?.name.split(' ')[0]}?` }]);
     }
   }
 
@@ -57,8 +57,8 @@ const AdvisorChat: React.FC = () => {
           <div>
             <h1 className="font-bold text-xl dark:text-white">PathPilot Advisor</h1>
             <div className="flex items-center gap-2">
-               <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-               <span className="text-xs text-green-500 font-bold uppercase tracking-widest">Optimizing your path</span>
+              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+              <span className="text-xs text-green-500 font-bold uppercase tracking-widest">Optimizing your path</span>
             </div>
           </div>
         </div>
@@ -71,18 +71,16 @@ const AdvisorChat: React.FC = () => {
         {messages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-4 duration-300`}>
             <div className={`flex gap-5 max-w-3xl ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-              <div className={`w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm border dark:border-slate-800 ${
-                msg.role === 'user' ? 'bg-white dark:bg-slate-800 text-gray-600' : 'bg-brand-600 text-white'
-              }`}>
+              <div className={`w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm border dark:border-slate-800 ${msg.role === 'user' ? 'bg-white dark:bg-slate-800 text-gray-600' : 'bg-brand-600 text-white'
+                }`}>
                 {msg.role === 'user' ? <User size={20} /> : <Sparkles size={20} />}
               </div>
-              <div className={`p-6 rounded-3xl text-base leading-relaxed shadow-sm overflow-hidden ${
-                msg.role === 'user' 
-                  ? 'bg-brand-600 text-white rounded-tr-none' 
+              <div className={`p-6 rounded-3xl text-base leading-relaxed shadow-sm overflow-hidden ${msg.role === 'user'
+                  ? 'bg-brand-600 text-white rounded-tr-none'
                   : 'bg-gray-50 dark:bg-slate-900 text-gray-800 dark:text-gray-200 rounded-tl-none border dark:border-slate-800'
-              }`}>
+                }`}>
                 <div className={`prose dark:prose-invert max-w-none ${msg.role === 'user' ? 'prose-p:text-white prose-headings:text-white prose-strong:text-white' : ''}`}>
-                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                  <ReactMarkdown>{msg.content}</ReactMarkdown>
                 </div>
               </div>
             </div>
@@ -112,7 +110,7 @@ const AdvisorChat: React.FC = () => {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
           />
-          <button 
+          <button
             onClick={handleSend}
             disabled={loading}
             className="p-5 bg-brand-600 text-white rounded-2xl hover:bg-brand-700 transition-all shadow-xl shadow-brand-500/20 disabled:bg-gray-400 disabled:shadow-none active:scale-95"

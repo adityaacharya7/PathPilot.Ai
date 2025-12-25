@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { RoadmapData, PrepPlan, UserProfile, ATSAnalysis, ChatMessage } from "../types";
+import { RoadmapData, PrepPlan, UserProfile, ATSAnalysis, ChatMessage } from "../../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
@@ -139,14 +139,14 @@ export const generatePrepPlan = async (targetRole: string, days: number, current
 };
 
 export const analyzeResumeATS = async (
-  resumeData: any, 
+  resumeData: any,
   targetRole: string,
   jobDescription: string = "NONE",
   experienceLevel: string = "Junior",
   industry: string = "Tech",
   fileData?: { data: string; mimeType: string }
 ): Promise<ATSAnalysis> => {
-  
+
   const systemPrompt = `
     You are an expert ATS (Applicant Tracking System) analyst, professional resume writer, and technical recruiter.
 
@@ -231,17 +231,17 @@ export const analyzeResumeATS = async (
           keyword_analysis: {
             type: Type.OBJECT,
             properties: {
-              critical: { 
-                  type: Type.ARRAY, 
-                  items: { type: Type.OBJECT, properties: { keyword: {type: Type.STRING}, frequency: {type: Type.STRING}, placement_suggestion: {type: Type.STRING} } } 
+              critical: {
+                type: Type.ARRAY,
+                items: { type: Type.OBJECT, properties: { keyword: { type: Type.STRING }, frequency: { type: Type.STRING }, placement_suggestion: { type: Type.STRING } } }
               },
-              important: { 
-                  type: Type.ARRAY, 
-                  items: { type: Type.OBJECT, properties: { keyword: {type: Type.STRING}, frequency: {type: Type.STRING}, placement_suggestion: {type: Type.STRING} } } 
+              important: {
+                type: Type.ARRAY,
+                items: { type: Type.OBJECT, properties: { keyword: { type: Type.STRING }, frequency: { type: Type.STRING }, placement_suggestion: { type: Type.STRING } } }
               },
-              nice_to_have: { 
-                  type: Type.ARRAY, 
-                  items: { type: Type.OBJECT, properties: { keyword: {type: Type.STRING}, frequency: {type: Type.STRING}, placement_suggestion: {type: Type.STRING} } } 
+              nice_to_have: {
+                type: Type.ARRAY,
+                items: { type: Type.OBJECT, properties: { keyword: { type: Type.STRING }, frequency: { type: Type.STRING }, placement_suggestion: { type: Type.STRING } } }
               },
             },
             required: ["critical", "important", "nice_to_have"]
@@ -288,13 +288,13 @@ export const analyzeResumeATS = async (
 };
 
 export const chatWithResume = async (
-    chatHistory: ChatMessage[], 
-    resumeContext: any, 
-    currentMessage: string
+  chatHistory: ChatMessage[],
+  resumeContext: any,
+  currentMessage: string
 ): Promise<string> => {
-  
-  const contextString = typeof resumeContext === 'string' 
-    ? resumeContext 
+
+  const contextString = typeof resumeContext === 'string'
+    ? resumeContext
     : JSON.stringify(resumeContext);
 
   const chat = ai.chats.create({
@@ -312,7 +312,7 @@ export const chatWithResume = async (
       `,
     }
   });
-  
+
   const result = await chat.sendMessage({ message: currentMessage });
   return result.text || "I couldn't process that request.";
 };

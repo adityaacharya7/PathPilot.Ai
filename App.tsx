@@ -3,6 +3,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { Layout, Briefcase, MessageSquare, Map, FileText, Settings, BarChart, Sun, Moon, LogOut, User as UserIcon, Sparkles } from 'lucide-react';
 import { UserProfile } from './types';
+import { auth, googleProvider, getUserProfile, saveUserProfile } from './src/services/firebase';
+import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
 
 // Pages
 import Landing from './pages/Landing';
@@ -17,17 +19,17 @@ import AdminPanel from './pages/AdminPanel';
 import ProfileSetup from './pages/ProfileSetup';
 
 // Contexts
-const ThemeContext = createContext({ isDark: false, toggle: () => {} });
-const UserContext = createContext<{ 
-  user: UserProfile | null, 
-  login: (u: UserProfile) => void, 
+const ThemeContext = createContext({ isDark: false, toggle: () => { } });
+const UserContext = createContext<{
+  user: UserProfile | null,
+  login: (u: UserProfile) => void,
   logout: () => void,
   updateProfile: (u: UserProfile) => void
-}>({ 
-  user: null, 
-  login: () => {}, 
-  logout: () => {}, 
-  updateProfile: () => {} 
+}>({
+  user: null,
+  login: () => { },
+  logout: () => { },
+  updateProfile: () => { }
 });
 
 export const useTheme = () => useContext(ThemeContext);
@@ -60,18 +62,17 @@ const Sidebar = () => {
           PathPilot
         </Link>
       </div>
-      
+
       <nav className="flex-1 p-6 space-y-2 overflow-y-auto">
         <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 ml-4">Main Menu</p>
         {navItems.map((item) => (
           <Link
             key={item.path}
             to={item.path}
-            className={`flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-200 group ${
-              isActive(item.path)
-                ? 'bg-brand-600 text-white shadow-xl shadow-brand-500/20 font-bold scale-[1.02]'
-                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-brand-600 dark:hover:text-brand-400'
-            }`}
+            className={`flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-200 group ${isActive(item.path)
+              ? 'bg-brand-600 text-white shadow-xl shadow-brand-500/20 font-bold scale-[1.02]'
+              : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-brand-600 dark:hover:text-brand-400'
+              }`}
           >
             <item.icon size={22} className={isActive(item.path) ? 'text-white' : 'group-hover:scale-110 transition-transform'} />
             <span className="text-base tracking-tight">{item.label}</span>
@@ -81,38 +82,38 @@ const Sidebar = () => {
 
       <div className="p-6 border-t dark:border-slate-800 space-y-6 bg-gray-50/50 dark:bg-slate-900/50">
         <div className="flex items-center gap-3">
-           <button 
-             onClick={toggle}
-             className="flex-1 flex items-center justify-center gap-3 py-3 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-2xl shadow-sm text-gray-600 dark:text-gray-400 hover:bg-brand-50 dark:hover:bg-brand-900/10 hover:text-brand-600 transition-all font-bold text-xs uppercase tracking-widest"
-           >
-             {isDark ? <Sun size={16} /> : <Moon size={16} />}
-             {isDark ? 'Light' : 'Dark'}
-           </button>
+          <button
+            onClick={toggle}
+            className="flex-1 flex items-center justify-center gap-3 py-3 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-2xl shadow-sm text-gray-600 dark:text-gray-400 hover:bg-brand-50 dark:hover:bg-brand-900/10 hover:text-brand-600 transition-all font-bold text-xs uppercase tracking-widest"
+          >
+            {isDark ? <Sun size={16} /> : <Moon size={16} />}
+            {isDark ? 'Light' : 'Dark'}
+          </button>
         </div>
 
         <div className="p-4 bg-white dark:bg-slate-800 rounded-3xl border dark:border-slate-700 shadow-sm space-y-4">
           <div className="flex items-center gap-3 overflow-hidden">
-             <div className="w-10 h-10 rounded-2xl bg-brand-100 dark:bg-brand-900 flex items-center justify-center text-brand-600 dark:text-brand-300 flex-shrink-0 shadow-inner">
-               {user?.avatar ? (
-                  <img src={user.avatar} className="w-full h-full object-cover rounded-2xl" referrerPolicy="no-referrer" />
-               ) : (
-                  <UserIcon size={20} />
-               )}
-             </div>
-             <div className="truncate flex-1">
-                <p className="text-sm font-black truncate dark:text-white tracking-tight">{user?.name || 'Guest'}</p>
-                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{user?.targetRole || 'Explorer'}</p>
-             </div>
-             <button onClick={() => { logout(); navigate('/'); }} className="p-2 text-gray-300 hover:text-red-500 transition-colors">
-                <LogOut size={18} />
-             </button>
+            <div className="w-10 h-10 rounded-2xl bg-brand-100 dark:bg-brand-900 flex items-center justify-center text-brand-600 dark:text-brand-300 flex-shrink-0 shadow-inner">
+              {user?.avatar ? (
+                <img src={user.avatar} className="w-full h-full object-cover rounded-2xl" referrerPolicy="no-referrer" />
+              ) : (
+                <UserIcon size={20} />
+              )}
+            </div>
+            <div className="truncate flex-1">
+              <p className="text-sm font-black truncate dark:text-white tracking-tight">{user?.name || 'Guest'}</p>
+              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{user?.targetRole || 'Explorer'}</p>
+            </div>
+            <button onClick={() => { logout(); navigate('/'); }} className="p-2 text-gray-300 hover:text-red-500 transition-colors">
+              <LogOut size={18} />
+            </button>
           </div>
-          
+
           {user?.targetRole && (
-             <div className="flex items-center gap-2 px-3 py-1 bg-brand-50 dark:bg-brand-900/20 rounded-lg">
-                <Sparkles size={12} className="text-brand-600" />
-                <span className="text-[10px] font-black text-brand-700 dark:text-brand-300 uppercase tracking-tighter">AI Optimized</span>
-             </div>
+            <div className="flex items-center gap-2 px-3 py-1 bg-brand-50 dark:bg-brand-900/20 rounded-lg">
+              <Sparkles size={12} className="text-brand-600" />
+              <span className="text-[10px] font-black text-brand-700 dark:text-brand-300 uppercase tracking-tighter">AI Optimized</span>
+            </div>
           )}
         </div>
       </div>
@@ -128,10 +129,7 @@ const ProtectedRoute = ({ children }: { children?: React.ReactNode }) => {
 
 const App: React.FC = () => {
   const [isDark, setIsDark] = useState(() => localStorage.getItem('theme') === 'dark');
-  const [user, setUser] = useState<UserProfile | null>(() => {
-    const saved = localStorage.getItem('user');
-    return saved ? JSON.parse(saved) : null;
-  });
+  const [user, setUser] = useState<UserProfile | null>(null);
 
   useEffect(() => {
     if (isDark) document.documentElement.classList.add('dark');
@@ -139,21 +137,57 @@ const App: React.FC = () => {
     localStorage.setItem('theme', isDark ? 'dark' : 'light');
   }, [isDark]);
 
-  const login = (u: UserProfile) => {
-    setUser(u);
-    localStorage.setItem('user', JSON.stringify(u));
+  useEffect(() => {
+    // Listen for auth state changes
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        const profile = await getUserProfile(firebaseUser.uid);
+        if (profile) {
+          setUser(profile);
+        } else {
+          // New user - pre-fill from Google
+          setUser({
+            name: firebaseUser.displayName || 'Explorer',
+            email: firebaseUser.email || '',
+            targetRole: '',
+            skills: [],
+            graduationYear: '',
+            currentLevel: 'Beginner',
+            avatar: firebaseUser.photoURL || undefined
+          });
+        }
+      } else {
+        setUser(null);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const login = async (u?: UserProfile) => {
+    // If a profile is passed (dev/mock), use it. Otherwise trigger Google Auth.
+    if (u) {
+      setUser(u);
+      return;
+    }
+
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (e) {
+      console.error("Login failed", e);
+    }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await signOut(auth);
     setUser(null);
-    localStorage.removeItem('user');
-    localStorage.removeItem('chat_history'); // Clear chat on logout for privacy
+    localStorage.clear();
   };
 
-  const updateProfile = (u: UserProfile) => {
+  const updateProfile = async (u: UserProfile) => {
+    if (!auth.currentUser) return;
+    await saveUserProfile(auth.currentUser.uid, u);
     setUser(u);
-    localStorage.setItem('user', JSON.stringify(u));
-  }
+  };
 
   return (
     <UserContext.Provider value={{ user, login, logout, updateProfile }}>
