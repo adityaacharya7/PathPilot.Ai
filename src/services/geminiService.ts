@@ -118,24 +118,108 @@ export const getCareerAdvice = async (history: { role: string; content: string }
   return result.text;
 };
 
-export const generatePrepPlan = async (targetRole: string, days: number, currentLevel: string): Promise<PrepPlan> => {
+export const generatePrepPlan = async (targetRole: string, days: number, currentLevel: string): Promise<any> => {
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
-    contents: `Generate a placement preparation plan for a student targeting a ${targetRole} role in ${days} days.`,
+    contents: `Generate a gamified placement quest for a student targeting ${targetRole} in ${days} days at ${currentLevel} level.
+    
+    OUTPUT JSON ONLY:
+    {
+      "questName": "The ${targetRole} Protocol",
+      "mainObjective": "Brief objective string",
+      "dailyQuests": [
+        { "id": "d1", "title": "Task 1", "xp": 20, "bonus": "optional bonus" },
+        { "id": "d2", "title": "Task 2", "xp": 40, "bonus": null }
+      ],
+      "bossBattle": {
+        "name": "Week 1 Boss: [Topic]",
+        "requirements": [
+          { "label": "Requirement 1", "progress": "0/10" },
+          { "label": "Requirement 2", "progress": "0/5" }
+        ],
+        "rewards": ["Reward 1", "Reward 2"]
+      },
+      "debuffs": [
+        { "title": "Risk 1", "desc": "Effect", "fix": "Mitigation" }
+      ]
+    }`,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
         properties: {
-          dailyPlan: { type: Type.STRING },
-          milestones: { type: Type.ARRAY, items: { type: Type.STRING } },
-          riskAlerts: { type: Type.ARRAY, items: { type: Type.STRING } },
+          questName: { type: Type.STRING },
+          mainObjective: { type: Type.STRING },
+          dailyQuests: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                id: { type: Type.STRING },
+                title: { type: Type.STRING },
+                xp: { type: Type.NUMBER },
+                bonus: { type: Type.STRING } // nullable treated as string/null by API usually, but Type.STRING is safest
+              },
+              required: ["id", "title", "xp"]
+            }
+          },
+          bossBattle: {
+            type: Type.OBJECT,
+            properties: {
+              name: { type: Type.STRING },
+              requirements: {
+                type: Type.ARRAY,
+                items: { type: Type.OBJECT, properties: { label: { type: Type.STRING }, progress: { type: Type.STRING } }, required: ["label", "progress"] }
+              },
+              rewards: { type: Type.ARRAY, items: { type: Type.STRING } }
+            },
+            required: ["name", "requirements", "rewards"]
+          },
+          debuffs: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: { title: { type: Type.STRING }, desc: { type: Type.STRING }, fix: { type: Type.STRING } },
+              required: ["title", "desc", "fix"]
+            }
+          }
         },
-        required: ["dailyPlan", "milestones", "riskAlerts"]
+        required: ["questName", "mainObjective", "dailyQuests", "bossBattle", "debuffs"]
       }
     }
   });
   return JSON.parse(response.text || '{}');
+};
+
+export const generateDailyQuests = async (targetRole: string, dayNumber: number, currentLevel: string): Promise<any[]> => {
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: `Generate 3 fresh, specific daily quests for Day ${dayNumber} of a ${targetRole} placement prep campaign (Level: ${currentLevel}).
+    
+    OUTPUT JSON ARRAY ONLY:
+    [
+      { "id": "d_${dayNumber}_1", "title": "Task 1", "xp": 30, "bonus": "optional bonus" },
+      { "id": "d_${dayNumber}_2", "title": "Task 2", "xp": 50, "bonus": null },
+      { "id": "d_${dayNumber}_3", "title": "Task 3", "xp": 20, "bonus": null }
+    ]`,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            id: { type: Type.STRING },
+            title: { type: Type.STRING },
+            xp: { type: Type.NUMBER },
+            bonus: { type: Type.STRING }
+          },
+          required: ["id", "title", "xp"]
+        }
+      }
+    }
+  });
+  return JSON.parse(response.text || '[]');
 };
 
 export const analyzeResumeATS = async (

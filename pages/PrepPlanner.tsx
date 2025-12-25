@@ -1,135 +1,470 @@
-import React, { useState } from 'react';
-import { Calendar, AlertTriangle, Target, Loader2, Sparkles } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import { generatePrepPlan } from '../src/services/geminiService';
-import { PrepPlan } from '../types';
+import React, { useState, useEffect } from 'react';
+import { Target, Loader2, Shield, Lock, CheckCircle2, Sword, Skull, Flame, AlertTriangle, ArrowRight, Save } from 'lucide-react';
+import { generatePrepPlan, generateDailyQuests } from '../src/services/geminiService';
+import { getUserProfile, updateUserQuestProgress, auth } from '../src/services/firebase';
+import { useUser } from '../App';
+import { QuestProgress } from '../types';
 
 const PrepPlanner: React.FC = () => {
-  const [role, setRole] = useState('SDE');
-  const [days, setDays] = useState(30);
-  const [level, setLevel] = useState('Beginner');
-  const [plan, setPlan] = useState<PrepPlan | null>(null);
+  const { user } = useUser();
+  // State
+  const [setupMode, setSetupMode] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [initializing, setInitializing] = useState(true);
 
-  const handleGenerate = async () => {
+  // Inputs
+  const [days, setDays] = useState(30);
+  const [level, setLevel] = useState('Intermediate');
+
+  // Gamification State
+  const [xp, setXp] = useState(0);
+  const [userLevel, setUserLevel] = useState(1);
+  const [completedDailies, setCompletedDailies] = useState<string[]>([]);
+
+  // Meta State (for persistence)
+  const [questMeta, setQuestMeta] = useState<{
+    startDate: string;
+    lastDailyRefresh?: string;
+  }>({ startDate: new Date().toISOString() });
+
+  // Dynamic Data
+  const [questData, setQuestData] = useState<any>(null);
+
+  // Load Progress on Mount
+  useEffect(() => {
+    const loadProgress = async () => {
+      const userId = auth.currentUser?.uid;
+      if (!userId) {
+        setInitializing(false);
+        return;
+      }
+
+      try {
+        const profile = await getUserProfile(userId);
+        if (profile?.questProgress && profile.questProgress.active) {
+          let qp = profile.questProgress;
+
+          // Check if we need to refresh daily quests
+          const today = new Date().toDateString();
+          const lastRefresh = qp.lastDailyRefresh ? new Date(qp.lastDailyRefresh).toDateString() : new Date(qp.startDate).toDateString();
+          const isNewDay = today !== lastRefresh;
+
+          let currentQuestData = qp.questData;
+          let currentCompleted = qp.completedDailies;
+
+          if (isNewDay) {
+            // Calculate Day Number
+            const start = new Date(qp.startDate);
+            const now = new Date();
+            const diffTime = Math.abs(now.getTime() - start.getTime());
+            const dayNumber = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // Day 1, Day 2...
+
+            try {
+              console.log(`New day detected (Day ${dayNumber})! Refreshing quests...`);
+              const newDailies = await generateDailyQuests(qp.role, dayNumber, qp.level);
+              if (newDailies && newDailies.length > 0) {
+                currentQuestData = {
+                  ...currentQuestData,
+                  dailyQuests: newDailies
+                };
+                currentCompleted = []; // Reset for new day
+
+                qp = {
+                  ...qp,
+                  questData: currentQuestData,
+                  completedDailies: currentCompleted,
+                  lastDailyRefresh: new Date().toISOString()
+                };
+
+                await updateUserQuestProgress(userId, qp);
+              }
+            } catch (e) {
+              console.error("Failed to refresh daily quests", e);
+            }
+          }
+
+          setQuestData(currentQuestData);
+          setXp(qp.xp);
+          setUserLevel(qp.userLevel);
+          setCompletedDailies(currentCompleted);
+          setDays(qp.days);
+          setLevel(qp.level);
+          setQuestMeta({
+            startDate: qp.startDate,
+            lastDailyRefresh: qp.lastDailyRefresh
+          });
+          setSetupMode(false);
+        }
+      } catch (err) {
+        console.error("Failed to load quest progress", err);
+      } finally {
+        setInitializing(false);
+      }
+    };
+    loadProgress();
+  }, [user]);
+
+  const saveProgress = async (newData: Partial<QuestProgress>) => {
+    const userId = auth.currentUser?.uid;
+    if (!userId) return;
+
+    const currentProgress: QuestProgress = {
+      active: true,
+      role: user?.targetRole || 'Unknown',
+      days,
+      startDate: questMeta.startDate,
+      lastDailyRefresh: questMeta.lastDailyRefresh,
+      level,
+      xp: newData.xp ?? xp,
+      userLevel: newData.userLevel ?? userLevel,
+      completedDailies: newData.completedDailies ?? completedDailies,
+      questData: newData.questData ?? questData
+    };
+
+    try {
+      await updateUserQuestProgress(userId, currentProgress);
+      // Update local meta if relevant (e.g. if we just refreshed, though this function is usually for XP)
+      if (newData.lastDailyRefresh) {
+        setQuestMeta(prev => ({ ...prev, lastDailyRefresh: newData.lastDailyRefresh }));
+      }
+    } catch (err) {
+      console.error("Failed to save progress", err);
+    }
+  };
+
+  const mainQuestStages = [
+    { id: 1, name: 'Core Foundations', status: 'active' },
+    { id: 2, name: 'Advanced Concepts', status: 'locked' },
+    { id: 3, name: 'System Design', status: 'locked' },
+    { id: 4, name: 'Mock Interviews', status: 'locked' },
+  ];
+
+  const handleGenerateQuest = async () => {
+    if (!user?.targetRole) return;
     setLoading(true);
     try {
-      const data = await generatePrepPlan(role, days, level);
-      setPlan(data);
-    } catch (err) {
-      console.error(err);
+      const data = await generatePrepPlan(user.targetRole, days, level);
+      setQuestData(data);
+      setSetupMode(false);
+
+      const newXp = 120;
+      const newLevel = level === 'Beginner' ? 1 : level === 'Intermediate' ? 5 : 10;
+      const startDate = new Date().toISOString();
+
+      setXp(newXp);
+      setUserLevel(newLevel);
+      setQuestMeta({ startDate });
+
+      const userId = auth.currentUser?.uid;
+      if (userId) {
+        const initialProgress: QuestProgress = {
+          active: true,
+          role: user.targetRole,
+          days,
+          startDate,
+          lastDailyRefresh: startDate, // Set initial refresh to now
+          level,
+          xp: newXp,
+          userLevel: newLevel,
+          completedDailies: [],
+          questData: data
+        };
+        await updateUserQuestProgress(userId, initialProgress);
+        setQuestMeta({ startDate, lastDailyRefresh: startDate });
+      }
+
+    } catch (error) {
+      console.error("Failed to generate quest", error);
+      // Fallback logic kept simple for brevity, same as before
+      const fallbackData = {
+        questName: `The ${user.targetRole} Protocol`,
+        mainObjective: "Master the Interview Gauntlet",
+        dailyQuests: [{ id: 'd1', title: 'Emergency Fallback Task', xp: 10, bonus: null }],
+        bossBattle: { name: "System Offline Boss", requirements: [], rewards: [] },
+        debuffs: []
+      };
+      setQuestData(fallbackData);
+      setSetupMode(false);
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <header className="mb-10 text-center">
-        <h1 className="text-3xl font-bold mb-2">Time-Based Placement Planner</h1>
-        <p className="text-gray-500">Custom prep strategies based on your target role and timeline.</p>
-      </header>
+  const handleCompleteDaily = (id: string, rewardResult: number) => {
+    if (completedDailies.includes(id)) return;
 
-      <div className="max-w-4xl mx-auto mb-12">
-        <div className="bg-white p-8 rounded-2xl border shadow-sm grid md:grid-cols-3 gap-6 items-end">
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2">Target Role</label>
-            <select
-              className="w-full p-3 border rounded-xl bg-gray-50"
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-            >
-              <option value="SDE">SDE / Software Engineer</option>
-              <option value="Analyst">Data Analyst</option>
-              <option value="Product Manager">Product Manager</option>
-              <option value="Core Engineering">Core Engineer</option>
-              <option value="MBA">Management / MBA</option>
-            </select>
+    const newCompleted = [...completedDailies, id];
+    setCompletedDailies(newCompleted);
+
+    let newXp = xp + rewardResult;
+    let newUserLevel = userLevel;
+
+    if (newXp >= 1000) {
+      newXp = 0;
+      newUserLevel += 1;
+    }
+
+    setXp(newXp);
+    setUserLevel(newUserLevel);
+
+    saveProgress({
+      xp: newXp,
+      userLevel: newUserLevel,
+      completedDailies: newCompleted
+    });
+  };
+
+  if (initializing) {
+    return (
+      <div className="h-[50vh] flex items-center justify-center">
+        <Loader2 className="animate-spin text-brand-600" size={40} />
+      </div>
+    );
+  }
+
+  if (setupMode) {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center p-4">
+        <div className="w-full max-w-2xl bg-white dark:bg-slate-950 rounded-[2.5rem] p-10 shadow-2xl border dark:border-slate-800 animate-in zoom-in-95 duration-500">
+          <div className="text-center mb-10">
+            <div className="w-16 h-16 bg-brand-600 rounded-2xl mx-auto flex items-center justify-center text-white mb-6 shadow-lg shadow-brand-500/30">
+              <Sword size={32} />
+            </div>
+            <h1 className="text-4xl font-black text-gray-900 dark:text-white tracking-tight mb-3">Choose Your Quest</h1>
+            <p className="text-gray-500 text-lg">Define your target to generate a personalized campaign.</p>
           </div>
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2">Time Left</label>
-            <select
-              className="w-full p-3 border rounded-xl bg-gray-50"
-              value={days}
-              onChange={(e) => setDays(Number(e.target.value))}
-            >
-              <option value={30}>30 Days (Intensive)</option>
-              <option value={60}>60 Days (Steady)</option>
-              <option value={90}>90 Days (Thorough)</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2">Current Level</label>
-            <select
-              className="w-full p-3 border rounded-xl bg-gray-50"
-              value={level}
-              onChange={(e) => setLevel(e.target.value)}
-            >
-              <option value="Beginner">Beginner (Starting now)</option>
-              <option value="Intermediate">Intermediate (Know basics)</option>
-              <option value="Advanced">Advanced (Need revision)</option>
-            </select>
-          </div>
-          <div className="md:col-span-3">
+
+          <div className="space-y-6">
+            <div>
+              <label className="block text-sm font-bold text-gray-900 dark:text-white mb-2 ml-1">Assigned Class</label>
+              <div className="p-4 rounded-xl border-2 border-brand-600 bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 font-bold flex justify-between items-center opacity-80 cursor-not-allowed">
+                <span>{user?.targetRole || 'Explorer (No Role Set)'}</span>
+                <Lock size={16} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-bold text-gray-900 dark:text-white mb-2 ml-1">Timeline</label>
+                <select
+                  value={days}
+                  onChange={(e) => setDays(Number(e.target.value))}
+                  className="w-full p-4 rounded-xl bg-gray-50 dark:bg-slate-900 border-2 border-transparent focus:border-brand-500 outline-none font-bold text-gray-900 dark:text-white"
+                >
+                  <option value={15}>15 Days (Speedrun)</option>
+                  <option value={30}>30 Days (Intensive)</option>
+                  <option value={60}>60 Days (Balanced)</option>
+                  <option value={90}>90 Days (Campaign)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-900 dark:text-white mb-2 ml-1">Starting Level</label>
+                <select
+                  value={level}
+                  onChange={(e) => setLevel(e.target.value)}
+                  className="w-full p-4 rounded-xl bg-gray-50 dark:bg-slate-900 border-2 border-transparent focus:border-brand-500 outline-none font-bold text-gray-900 dark:text-white"
+                >
+                  <option value="Beginner">Level 1 (Beginner)</option>
+                  <option value="Intermediate">Level 5 (Intermediate)</option>
+                  <option value="Advanced">Level 10 (Expert)</option>
+                </select>
+              </div>
+            </div>
+
             <button
-              onClick={handleGenerate}
-              disabled={loading}
-              className="w-full py-4 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 text-lg shadow-lg disabled:bg-indigo-400"
+              onClick={handleGenerateQuest}
+              disabled={loading || !user?.targetRole}
+              className="w-full py-5 bg-brand-600 text-white rounded-2xl font-bold text-xl hover:bg-brand-700 transition-all shadow-xl shadow-brand-500/30 flex items-center justify-center gap-3 mt-4 disabled:opacity-70 disabled:cursor-not-allowed group"
             >
-              {loading ? <Loader2 className="animate-spin" /> : <Sparkles />}
-              Generate My Prep Plan
+              {loading ? (
+                <>
+                  <Loader2 className="animate-spin" /> Generating World...
+                </>
+              ) : (
+                <>
+                  Start Quest <ArrowRight className="group-hover:translate-x-1 transition-transform" />
+                </>
+              )}
             </button>
           </div>
         </div>
       </div>
+    );
+  }
 
-      {plan && (
-        <div className="grid md:grid-cols-3 gap-8 animate-in fade-in duration-500">
-          <div className="md:col-span-2 space-y-8">
-            <section className="bg-white p-8 rounded-2xl border shadow-sm">
-              <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-                <Calendar className="text-indigo-600" /> Daily Plan
-              </h2>
-              <div className="prose prose-indigo max-w-none text-gray-700 leading-relaxed">
-                <ReactMarkdown>{plan.dailyPlan}</ReactMarkdown>
+  // Quest UI (Rendered after Setup)
+  return (
+    <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-10 animate-in fade-in duration-500 text-gray-900 dark:text-white">
+
+      {/* 1. Quest Header */}
+      <header className="bg-white dark:bg-slate-950 rounded-3xl p-8 border border-gray-100 dark:border-slate-800 shadow-sm relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-brand-500 to-indigo-500"></div>
+        <div className="flex flex-col md:flex-row justify-between items-end gap-6">
+          <div className="space-y-4 flex-1">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300 rounded-full text-xs font-black uppercase tracking-widest">
+              <Target size={14} /> Current Quest
+            </div>
+            <div className="flex items-center gap-3">
+              <div>
+                <h1 className="text-4xl font-black tracking-tight mb-2">{questData?.questName || 'Placement Quest'}</h1>
+                <p className="text-gray-500 dark:text-gray-400 font-medium text-lg">{days}-Day Campaign • {level} Mode</p>
               </div>
-            </section>
+            </div>
           </div>
 
-          <div className="space-y-8">
-            <section className="bg-white p-6 rounded-2xl border border-l-4 border-l-green-500 shadow-sm">
-              <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-                <Target className="text-green-600" /> Weekly Milestones
-              </h2>
-              <ul className="space-y-4">
-                {plan.milestones.map((m, i) => (
-                  <li key={i} className="flex gap-3 text-sm font-medium text-gray-700">
-                    <span className="w-6 h-6 rounded-full bg-green-100 text-green-700 flex items-center justify-center text-xs flex-shrink-0">
-                      {i + 1}
-                    </span>
-                    {m}
-                  </li>
-                ))}
-              </ul>
-            </section>
-
-            <section className="bg-red-50 p-6 rounded-2xl border border-red-100 shadow-sm">
-              <h2 className="text-lg font-bold mb-4 text-red-700 flex items-center gap-2">
-                <AlertTriangle className="text-red-600" /> Risk Alerts
-              </h2>
-              <ul className="space-y-3">
-                {plan.riskAlerts.map((r, i) => (
-                  <li key={i} className="text-sm text-red-600 flex gap-2">
-                    • {r}
-                  </li>
-                ))}
-              </ul>
-            </section>
+          {/* Stats Block */}
+          <div className="w-full md:w-80 bg-gray-50 dark:bg-slate-900 rounded-2xl p-4 border dark:border-slate-800">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm font-black text-gray-500 uppercase tracking-wider">Level {userLevel}</span>
+              <span className="text-sm font-bold text-brand-600">{xp} / 1000 XP</span>
+            </div>
+            <div className="h-3 w-full bg-gray-200 dark:bg-slate-800 rounded-full overflow-hidden">
+              <div className="h-full bg-brand-600 rounded-full transition-all duration-500" style={{ width: `${(xp / 1000) * 100}%` }}></div>
+            </div>
+            <div className="mt-3 flex justify-between items-center">
+              <span className="text-xs text-brand-500 font-bold flex items-center gap-1"><Save size={12} /> Auto-Saved</span>
+              <span className="text-xs font-bold text-gray-400">⏳ {days} Days Remaining</span>
+            </div>
           </div>
         </div>
-      )}
+      </header>
+
+      {/* 2. Main Quest Card */}
+      <section className="bg-slate-900 text-white rounded-[2rem] p-8 md:p-12 shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-12 opacity-10">
+          <Target size={200} />
+        </div>
+        <div className="relative z-10">
+          <h2 className="text-2xl font-black mb-8 flex items-center gap-3">
+            <Shield className="text-brand-400" /> Main Objective: {questData?.mainObjective || 'Career Mastery'}
+          </h2>
+
+          {/* Stages Stepper */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {mainQuestStages.map((stage, i) => (
+              <div key={stage.id} className={`p-4 rounded-xl border-2 transition-all ${stage.status === 'completed' ? 'border-green-500 bg-green-500/10' :
+                  stage.status === 'active' ? 'border-brand-500 bg-brand-500/10 scale-105 shadow-lg shadow-brand-500/20' :
+                    'border-slate-700 bg-slate-800 opacity-60'
+                }`}>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-xs font-black uppercase tracking-wider opacity-70">Stage 0{i + 1}</span>
+                  {stage.status === 'completed' && <CheckCircle2 size={16} className="text-green-500" />}
+                  {stage.status === 'active' && <Loader2 size={16} className="text-brand-400 animate-spin" />}
+                  {stage.status === 'locked' && <Lock size={16} />}
+                </div>
+                <div className="font-bold text-lg leading-tight">{stage.name}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left Col: Daily Quests & Boss */}
+        <div className="lg:col-span-2 space-y-8">
+
+          {/* Daily Quests */}
+          <div className="bg-white dark:bg-slate-950 border border-gray-100 dark:border-slate-800 rounded-3xl p-8 shadow-sm">
+            <h3 className="text-xl font-black mb-6 flex items-center gap-2 dark:text-white">
+              <Flame className="text-orange-500" /> Daily Quests
+            </h3>
+            <div className="space-y-4">
+              {questData?.dailyQuests?.map((quest: any) => {
+                const isDone = completedDailies.includes(quest.id);
+                return (
+                  <div key={quest.id}
+                    onClick={() => handleCompleteDaily(quest.id, quest.xp)}
+                    className={`p-4 rounded-2xl border-2 transition-all cursor-pointer group flex items-center justify-between ${isDone ? 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-900/30' : 'bg-white dark:bg-slate-900 border-gray-100 dark:border-slate-800 hover:border-brand-300 dark:hover:border-slate-600'
+                      }`}>
+                    <div className="flex items-center gap-4">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isDone ? 'bg-green-500 text-white' : 'bg-gray-100 dark:bg-slate-800 text-gray-400 group-hover:bg-brand-100 dark:group-hover:bg-gray-700'
+                        }`}>
+                        {isDone ? <CheckCircle2 size={18} /> : <div className="w-3 h-3 rounded-full bg-gray-300 dark:bg-slate-600" />}
+                      </div>
+                      <div>
+                        <h4 className={`font-bold ${isDone ? 'text-gray-500 line-through' : 'text-gray-900 dark:text-white'}`}>{quest.title}</h4>
+                        {quest.bonus && !isDone && <p className="text-xs text-brand-600 dark:text-brand-400 font-bold mt-1">Bonus: {quest.bonus}</p>}
+                      </div>
+                    </div>
+                    <div className={`px-3 py-1 rounded-lg text-xs font-black uppercase ${isDone ? 'bg-green-200 text-green-800' : 'bg-yellow-100 text-yellow-700'
+                      }`}>
+                      +{quest.xp} XP
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Boss Battle */}
+          {questData?.bossBattle && (
+            <div className="bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded-3xl p-8 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-6 opacity-5 dark:opacity-10 text-red-600">
+                <Skull size={100} />
+              </div>
+              <h3 className="text-xl font-black text-red-700 dark:text-red-400 mb-6 flex items-center gap-2">
+                <Sword className="text-red-600" /> {questData.bossBattle.name}
+              </h3>
+              <div className="bg-white dark:bg-slate-950/50 rounded-2xl p-6 border border-red-100 dark:border-red-900/30 backdrop-blur-sm">
+                <div className="space-y-3">
+                  {questData.bossBattle.requirements?.map((req: any, i: number) => (
+                    <BossRequirement key={i} label={req.label} progress={req.progress} />
+                  ))}
+                </div>
+                <div className="mt-6 pt-6 border-t border-red-100 dark:border-red-900/30 flex justify-between items-center text-red-600 dark:text-red-400">
+                  <span className="text-xs font-black uppercase tracking-widest">Rewards</span>
+                  <div className="flex gap-2">
+                    {questData.bossBattle.rewards?.map((reward: string, i: number) => (
+                      <span key={i} className="px-2 py-1 bg-red-100 dark:bg-red-900/30 rounded text-xs font-bold">{reward}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+        </div>
+
+        {/* Right Col: Debuffs */}
+        <div className="space-y-8">
+          <div className="bg-white dark:bg-slate-950 border border-gray-100 dark:border-slate-800 rounded-3xl p-8 shadow-sm">
+            <h3 className="text-lg font-black dark:text-white mb-6 flex items-center gap-2">
+              <AlertTriangle className="text-amber-500" /> Active Debuffs
+            </h3>
+            <div className="space-y-4">
+              {questData?.debuffs?.map((debuff: any, i: number) => (
+                <DebuffItem
+                  key={i}
+                  title={debuff.title}
+                  desc={debuff.desc}
+                  fix={debuff.fix}
+                />
+              ))}
+              {(!questData?.debuffs || questData.debuffs.length === 0) && (
+                <p className="text-gray-500 text-sm">No active debuffs. You are in peak condition!</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   );
 };
+
+const BossRequirement = ({ label, progress }: { label: string, progress: string }) => (
+  <div className="flex justify-between items-center text-sm font-bold text-gray-700 dark:text-gray-300">
+    <span>{label}</span>
+    <span className="font-mono bg-red-100 dark:bg-red-900/30 px-2 py-0.5 rounded text-red-700 dark:text-red-400">{progress}</span>
+  </div>
+);
+
+const DebuffItem = ({ title, desc, fix }: { title: string, desc: string, fix: string }) => (
+  <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 rounded-2xl">
+    <h4 className="font-bold text-amber-700 dark:text-amber-400 mb-1">{title}</h4>
+    <p className="text-xs font-black uppercase tracking-wider text-red-500 mb-3">{desc}</p>
+    <p className="text-xs text-amber-600 dark:text-amber-500/80 italic">{fix}</p>
+  </div>
+);
 
 export default PrepPlanner;

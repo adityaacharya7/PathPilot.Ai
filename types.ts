@@ -1,4 +1,38 @@
 
+export interface QuestData {
+  questName: string;
+  mainObjective: string;
+  dailyQuests: {
+    id: string;
+    title: string;
+    xp: number;
+    bonus: string | null;
+  }[];
+  bossBattle: {
+    name: string;
+    requirements: { label: string; progress: string }[];
+    rewards: string[];
+  };
+  debuffs: {
+    title: string;
+    desc: string;
+    fix: string;
+  }[];
+}
+
+export interface QuestProgress {
+  active: boolean;
+  role: string;
+  days: number;
+  startDate: string; // ISO String
+  lastDailyRefresh?: string; // ISO String of last refresh date
+  level: string;
+  xp: number;
+  userLevel: number; // The gamified level (1-10)
+  completedDailies: string[]; // List of IDs
+  questData: QuestData;
+}
+
 export interface UserProfile {
   name: string;
   email: string;
@@ -8,6 +42,7 @@ export interface UserProfile {
   graduationYear: string;
   currentLevel: 'Beginner' | 'Intermediate' | 'Advanced';
   atsScore?: number;
+  questProgress?: QuestProgress;
   atsBreakdown?: {
     keyword_relevance: number;
     formatting: number;
