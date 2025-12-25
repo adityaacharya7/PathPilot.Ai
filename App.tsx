@@ -69,13 +69,16 @@ const Sidebar = () => {
           <Link
             key={item.path}
             to={item.path}
-            className={`flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-200 group ${isActive(item.path)
-              ? 'bg-brand-600 text-white shadow-xl shadow-brand-500/20 font-bold scale-[1.02]'
-              : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-brand-600 dark:hover:text-brand-400'
+            className={`relative flex items-center gap-4 px-5 py-4 rounded-xl transition-all duration-300 group overflow-hidden ${isActive(item.path)
+              ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-300 font-bold'
+              : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-white'
               }`}
           >
-            <item.icon size={22} className={isActive(item.path) ? 'text-white' : 'group-hover:scale-110 transition-transform'} />
-            <span className="text-base tracking-tight">{item.label}</span>
+            {isActive(item.path) && (
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-brand-600 dark:bg-brand-400 rounded-r-full"></div>
+            )}
+            <item.icon size={22} className={`transition-transform duration-300 ${isActive(item.path) ? 'scale-110' : 'group-hover:scale-110 group-hover:rotate-3'}`} />
+            <span className="text-sm tracking-wide">{item.label}</span>
           </Link>
         ))}
       </nav>
