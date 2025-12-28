@@ -5,6 +5,7 @@ import { Layout, Briefcase, MessageSquare, Map, FileText, Settings, BarChart, Su
 import { UserProfile } from './types';
 import { auth, googleProvider, getUserProfile, saveUserProfile } from './src/services/firebase';
 import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
+import { isAdmin } from './src/config/adminEmails';
 
 // Pages
 import Landing from './pages/Landing';
@@ -48,9 +49,13 @@ const Sidebar = () => {
     { path: '/advisor', icon: MessageSquare, label: 'AI Advisor' },
     { path: '/planner', icon: Settings, label: 'Prep Planner' },
     { path: '/roadmap', icon: Map, label: 'Skill Roadmap' },
+
     { path: '/resume', icon: FileText, label: 'Resume Builder' },
-    { path: '/admin', icon: BarChart, label: 'Admin Panel' },
   ];
+
+  if (user && isAdmin(user.email)) {
+    navItems.push({ path: '/admin', icon: BarChart, label: 'Admin Panel' });
+  }
 
   if (location.pathname === '/' || location.pathname === '/login' || location.pathname === '/profile-setup') return null;
 
@@ -127,6 +132,15 @@ const Sidebar = () => {
 const ProtectedRoute = ({ children }: { children?: React.ReactNode }) => {
   const { user } = useUser();
   if (!user) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+};
+
+const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user } = useUser();
+
+  if (!user) return <Navigate to="/login" replace />;
+  if (!isAdmin(user.email)) return <Navigate to="/dashboard" replace />;
+
   return <>{children}</>;
 };
 
@@ -209,7 +223,7 @@ const App: React.FC = () => {
                 <Route path="/planner" element={<ProtectedRoute><PrepPlanner /></ProtectedRoute>} />
                 <Route path="/roadmap" element={<ProtectedRoute><Roadmap /></ProtectedRoute>} />
                 <Route path="/resume" element={<ProtectedRoute><ResumeBuilder /></ProtectedRoute>} />
-                <Route path="/admin" element={<ProtectedRoute><AdminPanel /></ProtectedRoute>} />
+                <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
               </Routes>
             </main>
           </div>
