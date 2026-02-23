@@ -4,7 +4,7 @@ import { HashRouter as Router, Routes, Route, Link, useLocation, useNavigate, Na
 import { Layout, Briefcase, MessageSquare, Map, FileText, Settings, BarChart, Sun, Moon, LogOut, User as UserIcon, Sparkles } from 'lucide-react';
 import { UserProfile } from './types';
 import { auth, googleProvider, getUserProfile, saveUserProfile } from './src/services/firebase';
-import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
+import { onAuthStateChanged, signInWithRedirect, getRedirectResult, signOut } from 'firebase/auth';
 import { isAdmin } from './src/config/adminEmails';
 
 // Pages
@@ -155,6 +155,11 @@ const App: React.FC = () => {
   }, [isDark]);
 
   useEffect(() => {
+    // Handle redirect result from Google Sign-In
+    getRedirectResult(auth).catch((e) => {
+      console.error("Redirect sign-in failed", e);
+    });
+
     // Listen for auth state changes
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
@@ -188,7 +193,7 @@ const App: React.FC = () => {
     }
 
     try {
-      await signInWithPopup(auth, googleProvider);
+      await signInWithRedirect(auth, googleProvider);
     } catch (e) {
       console.error("Login failed", e);
     }
